@@ -268,15 +268,15 @@ export class DetailedBody {
     });
     
     const torso = new THREE.Mesh(torsoGeo, torsoMat);
-    torso.position.set(0, 1.12, 0);
+    torso.position.set(0, 0.42, 0); // 首(0.64)の下に配置
     torso.castShadow = true;
     torso.receiveShadow = true;
     this.group.add(torso);
     
     // === 首 ===
-    const neckGeo = new THREE.CylinderGeometry(0.028, 0.032, 0.08, 32);
+    const neckGeo = new THREE.CylinderGeometry(0.035, 0.040, 0.12, 32);
     const neck = new THREE.Mesh(neckGeo, torsoMat);
-    neck.position.set(0, 1.34, 0);
+    neck.position.set(0, 0.64, 0); // 顔(0.68)の真下に配置
     neck.castShadow = true;
     this.group.add(neck);
     

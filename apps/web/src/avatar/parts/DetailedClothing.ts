@@ -165,7 +165,7 @@ export class DetailedClothing {
     });
     
     const dress = new THREE.Mesh(dressGeo, dressMat);
-    dress.position.set(0, 0.95, 0);
+    dress.position.set(0, 0.25, 0); // 体(0.42)に合わせて下げる
     dress.castShadow = true;
     dress.receiveShadow = true;
     this.group.add(dress);
@@ -179,7 +179,7 @@ export class DetailedClothing {
     });
     
     const belt = new THREE.Mesh(beltGeo, beltMat);
-    belt.position.set(0, 1.15, 0);
+    belt.position.set(0, 0.45, 0); // 体に合わせて下げる
     belt.rotation.x = Math.PI / 2;
     belt.castShadow = true;
     this.group.add(belt);
@@ -191,7 +191,7 @@ export class DetailedClothing {
   private createSleeves() {
     for (let side = -1; side <= 1; side += 2) {
       const sleeveGroup = new THREE.Group();
-      sleeveGroup.position.set(side * 0.15, 1.15, 0);
+      sleeveGroup.position.set(side * 0.15, 0.45, 0); // 体に合わせて下げる
       
       // === メインの袖 ===
       const sleeveGeo = new THREE.CylinderGeometry(0.032, 0.040, 0.14, 32, 16, true);
