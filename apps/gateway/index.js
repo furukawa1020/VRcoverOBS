@@ -151,9 +151,9 @@ oscServerBody.on('message', (oscMsg) => {
     const address = oscMsg.address;
     const args = oscMsg.args.map(arg => arg.value);
     
-    // デバッグ: 1%の確率でログ出力
-    if (Math.random() < 0.01) {
-      console.log('[OSC BODY]', address, args);
+    // デバッグ: 5%の確率でログ出力（体データは少ないので確率アップ）
+    if (Math.random() < 0.05) {
+      console.log('[OSC BODY]', address, '→', args);
     }
     
     // 体データのパース: /body/shoulder/left → body.shoulder.left
