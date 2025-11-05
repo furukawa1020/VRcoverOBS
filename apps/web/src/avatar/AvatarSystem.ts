@@ -135,9 +135,17 @@ export class AvatarSystem {
         this.scene.remove(this.vrm.scene);
         VRMUtils.deepDispose(this.vrm.scene);
       }
+      
+      // プロシージャルアバターを削除
+      if (this.proceduralAvatar) {
+        this.scene.remove(this.proceduralAvatar.group);
+        this.proceduralAvatar.dispose();
+        this.proceduralAvatar = null;
+      }
 
       // 新しいVRMをシーンに追加
       this.vrm = vrm;
+      this.useProceduralAvatar = false;
       this.scene.add(vrm.scene);
 
       // 位置調整
@@ -159,11 +167,53 @@ export class AvatarSystem {
       console.log('✅ VRMモデル読み込み完了:', path);
     } catch (error) {
       console.error('❌ VRM読み込みエラー:', error);
+      console.log('🎨 プロシージャルアバターにフォールバック');
+      
+      // VRMが読み込めない場合、プロシージャルアバターを生成
+      this.loadProceduralAvatar();
       throw error;
     }
   }
+  
+  /**
+   * プロシージャルアバターを生成（VRMの代わり）
+   */
+  private loadProceduralAvatar() {
+    console.log('🎨 超詳細プロシージャルアバター生成中...');
+    console.log('   - 顔: 毛穴2000個、まつ毛70本、眉毛160本、産毛500本');
+    console.log('   - 髪: 3000本以上 + 雪の結晶 + うぐいす髪飾り');
+    console.log('   - 体: 骨格、筋肉、指紋、手相 + 肩乗りうぐいす');
+    console.log('   - 服: 布の織り目、ボタン、レース');
+    
+    // 既存のVRMを削除
+    if (this.vrm) {
+      this.scene.remove(this.vrm.scene);
+      this.vrm = null;
+    }
+    
+    // プロシージャルアバターを生成
+    this.proceduralAvatar = new ProceduralAvatar({
+      position: new THREE.Vector3(
+        CONFIG.avatar.position.x,
+        CONFIG.avatar.position.y,
+        CONFIG.avatar.position.z
+      ),
+      scale: CONFIG.avatar.scale,
+    });
+    
+    this.useProceduralAvatar = true;
+    this.scene.add(this.proceduralAvatar.group);
+    
+    console.log('✅ プロシージャルアバター生成完了！');
+  }
 
   updateFromTracking(data: TrackingData) {
+    if (this.useProceduralAvatar && this.proceduralAvatar) {
+      // プロシージャルアバターの更新
+      this.updateProceduralFromTracking(data);
+      return;
+    }
+    
     if (!this.vrm) return;
 
     const proxy = this.vrm.expressionManager;
