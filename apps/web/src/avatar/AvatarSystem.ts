@@ -38,14 +38,14 @@ export class AvatarSystem {
   async init() {
     // シーンの初期化
     this.scene = new THREE.Scene();
-    this.scene.background = null; // 透過背景
+    this.scene.background = new THREE.Color(0x1E6F68); // 翠青（手取川の色）
 
     // カメラの初期化
     const container = document.getElementById('canvas-container')!;
     const aspect = container.clientWidth / container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(30, aspect, 0.1, 20);
-    this.camera.position.set(0, 1.3, 1.5);
-    this.camera.lookAt(0, 1.2, 0);
+    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 20);
+    this.camera.position.set(0, 0.7, 2.0);
+    this.camera.lookAt(0, 0.6, 0);
 
     // レンダラーの初期化（PBR設定）
     this.renderer = new THREE.WebGLRenderer({
@@ -77,7 +77,7 @@ export class AvatarSystem {
 
   private setupLighting() {
     // キーライト（白山の雪を反射した柔らかい光）
-    const keyLight = new THREE.DirectionalLight(THEME.colors.snowWhite, 1.2);
+    const keyLight = new THREE.DirectionalLight(THEME.colors.snowWhite, 2.0);
     keyLight.position.set(2, 3, 2);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
@@ -85,17 +85,17 @@ export class AvatarSystem {
     this.scene.add(keyLight);
 
     // フィルライト（手取川の碧を連想させる）
-    const fillLight = new THREE.DirectionalLight(THEME.colors.riverCyan, 0.4);
+    const fillLight = new THREE.DirectionalLight(THEME.colors.riverCyan, 0.8);
     fillLight.position.set(-2, 1, -1);
     this.scene.add(fillLight);
 
     // リムライト（玄武岩のシルエット強調）
-    const rimLight = new THREE.DirectionalLight(THEME.colors.snowWhite, 0.6);
+    const rimLight = new THREE.DirectionalLight(THEME.colors.snowWhite, 1.0);
     rimLight.position.set(0, 1, -3);
     this.scene.add(rimLight);
 
     // アンビエントライト（全体の底上げ）
-    const ambient = new THREE.AmbientLight(THEME.colors.woodBrown, 0.3);
+    const ambient = new THREE.AmbientLight(THEME.colors.snowWhite, 0.8);
     this.scene.add(ambient);
   }
 

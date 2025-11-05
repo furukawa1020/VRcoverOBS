@@ -48,12 +48,12 @@ export class ProceduralAvatar {
     
     console.log('[ProceduralAvatar] 顔を生成中... (毛穴2000個、まつ毛70本、眉毛160本、産毛500本)');
     this.face = new DetailedFace();
-    this.face.group.position.set(0, 1.38, 0);
+    this.face.group.position.set(0, 0.68, 0); // 下に移動
     this.group.add(this.face.group);
     
     console.log('[ProceduralAvatar] 髪を生成中... (3000本以上の髪の毛、雪の結晶アクセサリー)');
     this.hair = new DetailedHair();
-    this.hair.group.position.set(0, 1.38, 0);
+    this.hair.group.position.set(0, 0.68, 0); // 下に移動
     this.group.add(this.hair.group);
     
     console.log('[ProceduralAvatar] 服を生成中... (布の織り目、ボタン、レース)');
