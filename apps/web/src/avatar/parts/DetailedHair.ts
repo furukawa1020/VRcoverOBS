@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { THEME } from '../../config';
+import { DetailedUguisu } from './DetailedUguisu';
 
 interface HairStrand {
   mesh: THREE.Mesh;
@@ -17,10 +18,12 @@ interface HairStrand {
 export class DetailedHair {
   public group: THREE.Group;
   private hairStrands: HairStrand[] = [];
+  private uguisuAccessory: DetailedUguisu | null = null;
   
   constructor() {
     this.group = new THREE.Group();
     this.createDetailedHair();
+    this.createUguisuAccessory();
   }
   
   private createDetailedHair() {
