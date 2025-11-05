@@ -1,0 +1,36 @@
+# VRabater VRM Models
+# 自作VRMまたは商用可ライセンスのモデルを配置
+
+デフォルトモデル: hakusan_avatar.vrm
+
+## VRM作成方法
+
+### 1. VRoid Studioを使用（推奨・無料）
+1. VRoid Studio をダウンロード: https://vroid.com/studio
+2. 白山モチーフのキャラクター作成:
+   - **髪**: 川の蛇行をイメージした流れるライン、翠青(#1E6F68)グラデーション
+   - **目**: 雪白(#F7F7F7)のハイライト、碧い瞳
+   - **服装**: 木肌(#A67C52)のナチュラルな衣装、玄岩(#2E2B2B)のアクセント
+   - **アクセサリー**: 六角形（玄武岩モチーフ）のピアス/髪飾り
+3. エクスポート: ファイル → エクスポート → VRM
+
+### 2. Blender + VRM Addonを使用
+1. Blender + VRM Add-onで制作
+2. マテリアルはMToon（VRM標準シェーダー）を使用
+3. ブレンドシェイプ設定（必須）:
+   - Blink（まばたき）
+   - A, I, U, E, O（口形状）
+   - Happy, Sad, Angry（感情表現）
+
+### 3. 既存モデルの改変（ライセンス確認必須）
+- VRoid Hubで商用可モデルを探す
+- 白山カラーパレットに変更
+
+## ライセンス注意事項
+- 使用するモデルは必ず商用利用可能なライセンスを確認
+- VRoid StudioはCC BY 4.0準拠で商用可
+- 出典をREADMEまたは licenses/third_party.md に記載
+
+## モデル配置後
+1. ファイル名を `hakusan_avatar.vrm` に変更
+2. または `apps/web/src/config.ts` の `avatar.defaultModel` を更新

@@ -1,0 +1,11 @@
+# VRabater HDRI Environment Maps
+# CC0 / 商用可ライセンスのHDRIファイルを配置
+
+推奨ソース:
+- Poly Haven (https://polyhaven.com/hdris)
+- HDRI Haven (CC0)
+
+必要ファイル:
+- snow_overcast_2k.hdr（雪曇り）
+- indoor_warm.hdr（屋内暖色）
+- mountain_sunset.hdr（山の夕景）

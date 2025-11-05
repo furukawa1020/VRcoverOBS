@@ -1,0 +1,23 @@
+# VRabater AI Service
+# STT (Whisper) → LLM (Ollama) → TTS (Piper) パイプライン
+
+numpy>=1.24.0
+scipy>=1.10.0
+sounddevice>=0.4.6
+pyaudio>=0.2.13
+requests>=2.31.0
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Whisper (STT)
+openai-whisper>=20231117
+
+# Vosk (代替STT、軽量)
+vosk>=0.3.45
+
+# Piper (TTS)
+piper-tts>=1.2.0
+
+# オプション：RVC (将来のGPU音声変換)
+# torch>=2.1.0
+# torchaudio>=2.1.0
