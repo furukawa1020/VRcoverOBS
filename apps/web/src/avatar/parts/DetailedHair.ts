@@ -468,11 +468,30 @@ export class DetailedHair {
   }
   
   /**
-   * アニメーション更新（髪の揺れ）
+   * うぐいすの髪飾り
+   */
+  private createUguisuAccessory() {
+    this.uguisuAccessory = new DetailedUguisu();
+    
+    // 雪の結晶の横に配置
+    this.uguisuAccessory.group.position.set(0.08, 0.05, -0.02);
+    this.uguisuAccessory.group.rotation.y = -Math.PI / 4;
+    
+    // サイズ調整（かわいいサイズに）
+    this.uguisuAccessory.group.scale.setScalar(1.2);
+    
+    this.group.add(this.uguisuAccessory.group);
+    
+    console.log('[DetailedHair] うぐいす髪飾り追加完了！');
+  }
+  
+  /**
+   * アニメーション更新（髪の揺れ + うぐいすのアニメーション）
    */
   public update(deltaTime: number) {
     const time = Date.now() * 0.001;
     
+    // 髪の毛の揺れ
     this.hairStrands.forEach((strand, index) => {
       // 風の影響（緩やかな揺れ）
       const windPhase = time * 0.8 + strand.swayPhase;
@@ -487,5 +506,10 @@ export class DetailedHair {
       const turbulence = Math.sin(time * 2 + index * 0.1) * 0.0005;
       strand.mesh.rotation.y = turbulence;
     });
+    
+    // うぐいすのアニメーション
+    if (this.uguisuAccessory) {
+      this.uguisuAccessory.update(deltaTime);
+    }
   }
 }
