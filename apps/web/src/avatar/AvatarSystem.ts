@@ -382,16 +382,23 @@ export class AvatarSystem {
 
       const deltaTime = this.clock.getDelta();
 
+      // プロシージャルアバターの更新
+      if (this.useProceduralAvatar && this.proceduralAvatar) {
+        this.proceduralAvatar.update(deltaTime);
+      }
+
       // VRMの更新
       if (this.vrm) {
         this.vrm.update(deltaTime);
       }
 
-      // アイドルアニメーション
+      // アイドルアニメーション（VRMのみ）
       this.updateIdleAnimation(deltaTime);
 
-      // 自動まばたき
-      this.updateBlinking(deltaTime);
+      // 自動まばたき（VRMのみ）
+      if (!this.useProceduralAvatar) {
+        this.updateBlinking(deltaTime);
+      }
 
       // レンダリング
       this.renderer.render(this.scene, this.camera);
