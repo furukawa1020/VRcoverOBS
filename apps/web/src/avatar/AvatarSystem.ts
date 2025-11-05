@@ -267,8 +267,55 @@ export class AvatarSystem {
       }
     }
   }
+  
+  /**
+   * プロシージャルアバター用のトラッキング更新
+   */
+  private updateProceduralFromTracking(data: TrackingData) {
+    if (!this.proceduralAvatar) return;
+    
+    // 表情のスムージング
+    const smoothing = 0.3;
+    
+    this.currentExpression.blink = 
+      this.currentExpression.blink * (1 - smoothing) + (data.eyesClosed || 0) * smoothing;
+    this.currentExpression.mouthOpen = 
+      this.currentExpression.mouthOpen * (1 - smoothing) + (data.mouthOpen || 0) * smoothing;
+    this.currentExpression.mouthSmile = 
+      this.currentExpression.mouthSmile * (1 - smoothing) + (data.smile || 0) * smoothing;
+    
+    // リップシンク
+    this.proceduralAvatar.setMouthOpen(this.currentExpression.mouthOpen);
+    
+    // 表情
+    if (this.currentExpression.mouthSmile > 0.3) {
+      this.proceduralAvatar.setExpression('happy', this.currentExpression.mouthSmile);
+    }
+    
+    // 視線
+    if (data.eyePosition) {
+      this.proceduralAvatar.setEyeDirection(
+        new THREE.Vector3(data.eyePosition.x, data.eyePosition.y, -1)
+      );
+    }
+    
+    // 頭部回転
+    if (data.headRotation) {
+      const euler = new THREE.Euler(
+        data.headRotation.x * 0.7,
+        data.headRotation.y * 0.7,
+        data.headRotation.z * 0.5
+      );
+      this.proceduralAvatar.setHeadRotation(euler);
+    }
+  }
 
   private updateIdleAnimation(deltaTime: number) {
+    if (this.useProceduralAvatar) {
+      // プロシージャルアバターは独自のアイドルアニメーション持ってる
+      return;
+    }
+    
     if (!this.vrm) return;
 
     this.idleTime += deltaTime;
