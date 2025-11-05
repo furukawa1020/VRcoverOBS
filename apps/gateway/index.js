@@ -53,6 +53,11 @@ let trackingData = {
 oscServer.on('message', (msg) => {
   try {
     const [address, ...args] = msg;
+    
+    // デバッグ: 最初の10メッセージをログ出力
+    if (Math.random() < 0.01) { // 1%の確率でログ出力
+      console.log('[OSC DEBUG]', address, args);
+    }
 
     // OpenSeeFaceのOSCメッセージをパース
     switch (address) {
@@ -136,6 +141,10 @@ console.log('✅ OSCサーバー起動:', OSC_PORT);
 
 // エラーハンドリング
 oscServer.on('error', (error) => {
+  // Malformed Packetエラーは無視(OpenSeeFaceとの互換性問題)
+  if (error.message && error.message.includes('Malformed Packet')) {
+    return; // 無視
+  }
   console.error('❌ OSCサーバーエラー:', error);
 });
 

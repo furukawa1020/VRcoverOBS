@@ -7,8 +7,9 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "ws": "^8.16.0",
-    "node-osc": "^9.1.0"
+    "node-osc": "^9.1.0",
+    "osc-min": "^2.1.2",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
