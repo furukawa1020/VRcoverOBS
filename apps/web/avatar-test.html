@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アバターテスト - VTuber感マシマシ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: sans-serif;
+      background: linear-gradient(135deg, #1E6F68 0%, #2E2B2B 100%);
+      color: white;
+      overflow: hidden;
+    }
+    
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+    }
+    
+    #info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    
+    #info h2 {
+      color: #1E6F68;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="info">
+    <h2>🎀 VTuber感マシマシアバターテスト</h2>
+    <p>ステータス: <span id="status">初期化中...</span></p>
+    <p>エラー: <span id="error">なし</span></p>
+  </div>
+  
+  <script type="module">
+    import * as THREE from 'three';
+    import { SimpleCuteAvatar } from './src/avatar/SimpleCuteAvatar';
+    
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error');
+    
+    try {
+      statusEl.textContent = 'Three.js初期化中...';
+      
+      // シーン
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1E6F68);
+      
+      // カメラ
+      const camera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        100
+      );
+      camera.position.set(0, 0.7, 2.0);
+      camera.lookAt(0, 0.6, 0);
+      
+      // レンダラー
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.shadowMap.enabled = true;
+      document.getElementById('canvas-container').appendChild(renderer.domElement);
+      
+      statusEl.textContent = 'ライト設定中...';
+      
+      // ライト
+      const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+      keyLight.position.set(2, 3, 2);
+      keyLight.castShadow = true;
+      scene.add(keyLight);
+      
+      const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      fillLight.position.set(-2, 1, -1);
+      scene.add(fillLight);
+      
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      scene.add(ambientLight);
+      
+      statusEl.textContent = 'アバター生成中...';
+      
+      // 可愛いアバター
+      const avatar = new SimpleCuteAvatar();
+      scene.add(avatar.group);
+      
+      statusEl.textContent = '✨ 完成！可愛いでしょ？';
+      
+      // アニメーションループ
+      let lastTime = 0;
+      function animate(time) {
+        requestAnimationFrame(animate);
+        
+        const deltaTime = (time - lastTime) / 1000;
+        lastTime = time;
+        
+        avatar.update(deltaTime);
+        
+        renderer.render(scene, camera);
+      }
+      
+      animate(0);
+      
+      // リサイズ対応
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+      
+    } catch (e) {
+      console.error('エラー:', e);
+      statusEl.textContent = '❌ エラー発生';
+      errorEl.textContent = e.message;
+      errorEl.style.color = '#ff6b6b';
+    }
+  </script>
+</body>
+</html>

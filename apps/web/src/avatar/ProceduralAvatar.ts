@@ -1,12 +1,10 @@
 /**
  * ProceduralAvatar.ts
- * VTuber感マシマシの親しみやすい可愛いアバター!
- * 
- * SimpleCuteAvatarを使用: アニメ風で親しみやすい見た目
+ * VRoidで作った超可愛いVRMアバターを使用！✨
  */
 
 import * as THREE from 'three';
-import { SimpleCuteAvatar } from './SimpleCuteAvatar';
+import { VRoidAvatar } from './VRoidAvatar';
 
 export interface ProceduralAvatarOptions {
   position?: THREE.Vector3;
@@ -16,17 +14,20 @@ export interface ProceduralAvatarOptions {
 export class ProceduralAvatar {
   public group: THREE.Group;
   
-  private avatar: SimpleCuteAvatar;
-  private blinkTimer: number = 0;
+  private avatar: VRoidAvatar;
   private breatheTimer: number = 0;
+  private isLoaded: boolean = false;
   
   constructor(options: ProceduralAvatarOptions = {}) {
     this.group = new THREE.Group();
     
-    // === シンプルで可愛いアバターを生成 ===
-    console.log('[ProceduralAvatar] VTuber感マシマシの可愛いアバターを生成中...💕');
-    this.avatar = new SimpleCuteAvatar();
+    // === VRoidアバターを生成 ===
+    console.log('[ProceduralAvatar] 🎀 VRoid可愛いアバター読み込み中...');
+    this.avatar = new VRoidAvatar();
     this.group.add(this.avatar.group);
+    
+    // VRMモデルを非同期で読み込み
+    this.loadVRMModel();
     
     // === 位置・スケール ===
     if (options.position) {
@@ -37,22 +38,25 @@ export class ProceduralAvatar {
       this.group.scale.setScalar(options.scale);
     }
     
-    // === シャドウ設定 ===
-    this.group.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.castShadow = true;
-        object.receiveShadow = true;
-      }
-    });
-    
-    console.log('[ProceduralAvatar] 可愛いアバター生成完了！🎀');
+    console.log('[ProceduralAvatar] 準備完了！モデル読み込み待機中...');
+  }
+  
+  private async loadVRMModel() {
+    try {
+      await this.avatar.loadModel('/models/hakusan-avatar.vrm');
+      this.isLoaded = true;
+      console.log('[ProceduralAvatar] ✨ VRMモデル読み込み完了！めちゃかわいい！');
+    } catch (error) {
+      console.error('[ProceduralAvatar] ❌ VRMモデル読み込み失敗:', error);
+      console.log('[ProceduralAvatar] 💡 ヒント: apps/web/public/models/hakusan-avatar.vrm にモデルを配置してください');
+    }
   }
   
   /**
    * フレーム更新(アニメーション)
    */
   public update(deltaTime: number) {
-    // SimpleCuteAvatarのupdateを呼び出し
+    // VRoidAvatarのupdateを呼び出し
     this.avatar.update(deltaTime);
     
     // === 呼吸アニメーション ===
@@ -62,31 +66,31 @@ export class ProceduralAvatar {
   }
   
   /**
-   * 表情変更(SimpleCuteAvatarに委譲)
+   * 表情変更(VRoidAvatarに委譲)
    */
   public setExpression(expression: string, weight: number) {
-    // 将来的にSimpleCuteAvatarに表情メソッドを追加
+    this.avatar.setExpression(expression, weight);
   }
   
   /**
    * リップシンク
    */
   public setMouthOpen(value: number) {
-    // 将来的にSimpleCuteAvatarにリップシンクメソッドを追加
+    this.avatar.setMouthOpen(value);
   }
   
   /**
    * 頭の回転
    */
   public setHeadRotation(euler: THREE.Euler) {
-    this.avatar.group.rotation.copy(euler);
+    this.avatar.setHeadRotation(euler);
   }
   
   /**
    * 視線
    */
   public setEyeDirection(direction: THREE.Vector3) {
-    // 将来的にSimpleCuteAvatarに視線メソッドを追加
+    // VRoidAvatarに視線機能を追加予定
   }
   
   /**
