@@ -132,112 +132,194 @@ export class SimpleCuteAvatar {
   }
 
   private createMouth() {
-    // かわいい笑顔の口
+    // VTuber風のかわいい笑顔の口✨
     const mouthCurve = new THREE.EllipseCurve(
       0, 0,
-      0.04, 0.02,
-      Math.PI * 0.2, Math.PI * 0.8,
+      0.045, 0.025, // 少し大きく
+      Math.PI * 0.15, Math.PI * 0.85,
       false,
       0
     );
     
-    const mouthPoints = mouthCurve.getPoints(20);
+    const mouthPoints = mouthCurve.getPoints(25);
     const mouthGeometry = new THREE.BufferGeometry().setFromPoints(mouthPoints);
     const mouthMaterial = new THREE.LineBasicMaterial({
-      color: 0xFF6B8A,
-      linewidth: 2,
+      color: 0xFF6B8A, // ピンク
+      linewidth: 3, // 太めに
     });
     
     const mouth = new THREE.Line(mouthGeometry, mouthMaterial);
-    mouth.position.set(0, 0.6, 0.14);
+    mouth.position.set(0, 0.6, 0.145);
     mouth.rotation.x = Math.PI / 2;
     this.group.add(mouth);
+    
+    // ほっぺの赤み(チーク)💕
+    const cheekGeometry = new THREE.CircleGeometry(0.025, 16);
+    const cheekMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFB6C1,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide,
+    });
+    
+    const leftCheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
+    leftCheek.position.set(-0.08, 0.62, 0.13);
+    this.group.add(leftCheek);
+    
+    const rightCheek = new THREE.Mesh(cheekGeometry, cheekMaterial);
+    rightCheek.position.set(0.08, 0.62, 0.13);
+    this.group.add(rightCheek);
   }
 
   private createHair() {
-    // 前髪(ふんわり)
-    const bangGeometry = new THREE.SphereGeometry(0.17, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.6);
+    // VTuber感マシマシ!翠青色の髪✨
     const hairMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2E2B2B, // 玄岩(黒髪)
-      roughness: 0.8,
-      metalness: 0.1,
+      color: 0x1E6F68, // 翠青色(目と同じ色でコーディネート!)
+      roughness: 0.6,
+      metalness: 0.3,
+      emissive: 0x0A3430, // ほんのり光る
+      emissiveIntensity: 0.2,
     });
     
+    // 前髪(ふんわりボリューミー!)
+    const bangGeometry = new THREE.SphereGeometry(0.18, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.65);
     const bangs = new THREE.Mesh(bangGeometry, hairMaterial);
-    bangs.position.set(0, 0.7, 0.02);
+    bangs.position.set(0, 0.72, 0.04);
     this.group.add(bangs);
     
-    // 後ろ髪(ロング)
-    const backHairGeometry = new THREE.SphereGeometry(0.16, 16, 16, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.8);
+    // 後ろ髪(ロングでふわふわ!)
+    const backHairGeometry = new THREE.SphereGeometry(0.17, 16, 16, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.9);
     const backHair = new THREE.Mesh(backHairGeometry, hairMaterial);
-    backHair.position.set(0, 0.65, -0.05);
+    backHair.position.set(0, 0.66, -0.06);
+    backHair.scale.y = 1.3; // 縦に伸ばしてロング感
     this.group.add(backHair);
     
-    // サイドの髪
-    const sideHairGeometry = new THREE.CylinderGeometry(0.03, 0.04, 0.4, 8);
+    // サイドの髪(ツインテール風)
+    const sideHairGeometry = new THREE.CylinderGeometry(0.04, 0.05, 0.45, 8);
     
     const leftSideHair = new THREE.Mesh(sideHairGeometry, hairMaterial);
-    leftSideHair.position.set(-0.13, 0.5, 0);
-    leftSideHair.rotation.z = Math.PI * 0.1;
+    leftSideHair.position.set(-0.14, 0.48, 0);
+    leftSideHair.rotation.z = Math.PI * 0.12;
     this.group.add(leftSideHair);
     
     const rightSideHair = new THREE.Mesh(sideHairGeometry, hairMaterial);
-    rightSideHair.position.set(0.13, 0.5, 0);
-    rightSideHair.rotation.z = -Math.PI * 0.1;
+    rightSideHair.position.set(0.14, 0.48, 0);
+    rightSideHair.rotation.z = -Math.PI * 0.12;
     this.group.add(rightSideHair);
     
-    // 雪の結晶ヘアピン
-    const snowflakeGeometry = new THREE.OctahedronGeometry(0.03, 0);
+    // 雪の結晶ヘアピン(キラキラ大きく!)
+    const snowflakeGeometry = new THREE.OctahedronGeometry(0.04, 0); // 0.03 → 0.04
     const snowflakeMaterial = new THREE.MeshStandardMaterial({
       color: 0xF7F7F7, // 雪白
-      roughness: 0.1,
-      metalness: 0.8,
-      emissive: 0xF7F7F7,
-      emissiveIntensity: 0.3,
+      roughness: 0.05,
+      metalness: 0.9,
+      emissive: 0xCCEEFF,
+      emissiveIntensity: 0.5,
     });
     
     const snowflake = new THREE.Mesh(snowflakeGeometry, snowflakeMaterial);
-    snowflake.position.set(0.1, 0.75, 0.08);
+    snowflake.position.set(0.11, 0.77, 0.09);
     this.group.add(snowflake);
+    
+    // 追加: 星型の髪飾り⭐
+    const starShape = new THREE.Shape();
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const radius = i % 2 === 0 ? 0.02 : 0.01;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (i === 0) starShape.moveTo(x, y);
+      else starShape.lineTo(x, y);
+    }
+    starShape.closePath();
+    
+    const starGeometry = new THREE.ExtrudeGeometry(starShape, {
+      depth: 0.005,
+      bevelEnabled: false,
+    });
+    const starMaterial = new THREE.MeshStandardMaterial({
+      color: 0xFFD700, // ゴールド
+      roughness: 0.2,
+      metalness: 0.8,
+      emissive: 0xFFD700,
+      emissiveIntensity: 0.4,
+    });
+    
+    const star = new THREE.Mesh(starGeometry, starMaterial);
+    star.position.set(-0.1, 0.75, 0.09);
+    star.rotation.z = Math.PI / 4;
+    this.group.add(star);
   }
 
   private createBody() {
-    // 胴体
-    const bodyGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.35, 16);
+    // 胴体(可愛いワンピース)
+    const bodyGeometry = new THREE.CylinderGeometry(0.12, 0.16, 0.38, 16);
     const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0xF7F7F7, // 白いワンピース
+      color: 0xF0F8FF, // アリスブルー(淡い青)
+      roughness: 0.7,
+      metalness: 0.05,
+    });
+    
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.set(0, 0.27, 0);
+    this.group.add(body);
+    
+    // 腕(肌色)
+    const armGeometry = new THREE.CylinderGeometry(0.03, 0.035, 0.27, 8);
+    const skinMaterial = new THREE.MeshStandardMaterial({
+      color: 0xFFDBB3,
+      roughness: 0.7,
+      metalness: 0.0,
+    });
+    
+    const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
+    leftArm.position.set(-0.16, 0.34, 0);
+    leftArm.rotation.z = Math.PI * 0.18;
+    this.group.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(armGeometry, skinMaterial);
+    rightArm.position.set(0.16, 0.34, 0);
+    rightArm.rotation.z = -Math.PI * 0.18;
+    this.group.add(rightArm);
+    
+    // 大きなリボン(胸元に大きく!)🎀
+    const ribbonCenterGeo = new THREE.BoxGeometry(0.06, 0.06, 0.02);
+    const ribbonMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1E6F68, // 翠青
+      roughness: 0.3,
+      metalness: 0.3,
+      emissive: 0x0A3430,
+      emissiveIntensity: 0.2,
+    });
+    
+    const ribbonCenter = new THREE.Mesh(ribbonCenterGeo, ribbonMaterial);
+    ribbonCenter.position.set(0, 0.44, 0.13);
+    this.group.add(ribbonCenter);
+    
+    // リボンの左右の輪
+    const ribbonLoopGeo = new THREE.TorusGeometry(0.04, 0.012, 8, 16);
+    const leftLoop = new THREE.Mesh(ribbonLoopGeo, ribbonMaterial);
+    leftLoop.position.set(-0.05, 0.44, 0.13);
+    leftLoop.rotation.y = Math.PI / 2;
+    this.group.add(leftLoop);
+    
+    const rightLoop = new THREE.Mesh(ribbonLoopGeo, ribbonMaterial);
+    rightLoop.position.set(0.05, 0.44, 0.13);
+    rightLoop.rotation.y = Math.PI / 2;
+    this.group.add(rightLoop);
+    
+    // 襟(白いフリル)
+    const collarGeo = new THREE.TorusGeometry(0.09, 0.015, 8, 24, Math.PI);
+    const collarMat = new THREE.MeshStandardMaterial({
+      color: 0xFFFFFF,
       roughness: 0.8,
       metalness: 0.0,
     });
     
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.set(0, 0.275, 0);
-    this.group.add(body);
-    
-    // 腕
-    const armGeometry = new THREE.CylinderGeometry(0.03, 0.035, 0.25, 8);
-    
-    const leftArm = new THREE.Mesh(armGeometry, bodyMaterial);
-    leftArm.position.set(-0.15, 0.35, 0);
-    leftArm.rotation.z = Math.PI * 0.15;
-    this.group.add(leftArm);
-    
-    const rightArm = new THREE.Mesh(armGeometry, bodyMaterial);
-    rightArm.position.set(0.15, 0.35, 0);
-    rightArm.rotation.z = -Math.PI * 0.15;
-    this.group.add(rightArm);
-    
-    // リボン(胸元)
-    const ribbonGeometry = new THREE.TorusGeometry(0.04, 0.01, 8, 16);
-    const ribbonMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1E6F68, // 翠青
-      roughness: 0.3,
-      metalness: 0.2,
-    });
-    
-    const ribbon = new THREE.Mesh(ribbonGeometry, ribbonMaterial);
-    ribbon.position.set(0, 0.42, 0.12);
-    this.group.add(ribbon);
+    const collar = new THREE.Mesh(collarGeo, collarMat);
+    collar.position.set(0, 0.52, 0.08);
+    collar.rotation.x = Math.PI / 2;
+    this.group.add(collar);
   }
 
   private createUguisu() {
@@ -283,15 +365,22 @@ export class SimpleCuteAvatar {
     // まばたき
     this.blinkTimer += deltaTime;
     
-    if (this.blinkTimer > 3.0) {
+    if (this.blinkTimer > 2.5) { // 少し頻繁に
       this.blink();
       this.blinkTimer = 0;
     }
     
-    // ふわふわ揺れる(かわいい動き)
+    // VTuber感マシマシのアニメーション✨
     const time = Date.now() * 0.001;
-    this.group.position.y = Math.sin(time * 2) * 0.01;
-    this.group.rotation.z = Math.sin(time * 1.5) * 0.02;
+    
+    // ふわふわ上下(呼吸感)
+    this.group.position.y = Math.sin(time * 2) * 0.015;
+    
+    // 左右にゆらゆら(可愛い揺れ)
+    this.group.rotation.z = Math.sin(time * 1.8) * 0.03;
+    
+    // 前後に少し揺れる
+    this.group.rotation.x = Math.sin(time * 1.5) * 0.01;
   }
 
   private blink() {
