@@ -4,9 +4,9 @@
  * WebSocketでWebブラウザに配信する
  */
 
-import { WebSocketServer } from 'ws';
-import { createServer } from 'http';
-import osc from 'node-osc';
+const { WebSocketServer } = require('ws');
+const { createServer } = require('http');
+const osc = require('node-osc');
 
 const WS_PORT = 8080;
 const OSC_PORT = 11573; // OpenSeeFaceのデフォルトポート
