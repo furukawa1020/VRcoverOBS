@@ -1,5 +1,5 @@
 # VRabater AI Service
-# STT (Whisper) → LLM (Ollama) → TTS (Piper) パイプライン
+# STT (Whisper) + LLM (Ollama) + TTS (Piper) pipeline
 
 numpy>=1.24.0
 scipy>=1.10.0
@@ -12,7 +12,7 @@ flask-cors>=4.0.0
 # Whisper (STT)
 openai-whisper>=20231117
 
-# Vosk (代替STT、軽量)
+# Vosk (alternative STT, lightweight)
 vosk>=0.3.45
 
 # Piper (TTS)
