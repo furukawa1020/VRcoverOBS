@@ -306,6 +306,11 @@ export class AvatarSystem {
       );
       this.proceduralAvatar.setHeadRotation(euler);
     }
+    
+    // 🦴 全身トラッキング (体データがあれば適用)
+    if ((data as any).body) {
+      this.proceduralAvatar.applyFullBodyTracking((data as any).body);
+    }
   }
 
   private updateIdleAnimation(deltaTime: number) {
