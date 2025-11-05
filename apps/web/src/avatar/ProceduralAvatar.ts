@@ -76,6 +76,7 @@ export class ProceduralAvatar {
    * リップシンク
    */
   public setMouthOpen(value: number) {
+    console.log('[ProceduralAvatar] リップシンク呼び出し:', value);
     this.avatar.setMouthOpen(value);
   }
   
@@ -83,6 +84,7 @@ export class ProceduralAvatar {
    * 頭の回転
    */
   public setHeadRotation(euler: THREE.Euler) {
+    console.log('[ProceduralAvatar] 頭回転呼び出し:', euler.x, euler.y, euler.z);
     this.avatar.setHeadRotation(euler);
   }
   

@@ -109,11 +109,17 @@ export class VRoidAvatar {
    * 頭の回転
    */
   setHeadRotation(euler: THREE.Euler) {
-    if (!this.vrm) return;
+    if (!this.vrm) {
+      console.log('[VRoidAvatar] VRMがまだ読み込まれていません');
+      return;
+    }
 
     const head = this.vrm.humanoid.getNormalizedBoneNode('head');
     if (head) {
       head.rotation.copy(euler);
+      console.log('[VRoidAvatar] 頭回転:', euler.x, euler.y, euler.z);
+    } else {
+      console.warn('[VRoidAvatar] headボーンが見つかりません');
     }
   }
 
@@ -121,8 +127,12 @@ export class VRoidAvatar {
    * リップシンク
    */
   setMouthOpen(value: number) {
-    if (!this.vrm?.expressionManager) return;
+    if (!this.vrm?.expressionManager) {
+      console.log('[VRoidAvatar] expressionManagerがありません');
+      return;
+    }
     
+    console.log('[VRoidAvatar] 口開き:', value);
     this.vrm.expressionManager.setValue('aa', value);
   }
 
