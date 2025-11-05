@@ -96,6 +96,14 @@ export class ProceduralAvatar {
   }
   
   /**
+   * 全身トラッキングの適用
+   */
+  public applyFullBodyTracking(bodyData: any) {
+    console.log('[ProceduralAvatar] 全身トラッキング適用');
+    this.avatar.applyFullBodyTracking(bodyData);
+  }
+  
+  /**
    * 破棄処理
    */
   public dispose() {
