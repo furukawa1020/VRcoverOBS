@@ -41,6 +41,9 @@ export class VRoidAvatar {
       
       this.group.add(this.vrm.scene);
       
+      // 初期回転を設定(正面向き)
+      this.group.rotation.y = -Math.PI / 2;
+      
       // アニメーションミキサー
       this.mixer = new THREE.AnimationMixer(this.vrm.scene);
       
