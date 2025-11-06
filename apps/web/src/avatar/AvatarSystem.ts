@@ -379,6 +379,11 @@ export class AvatarSystem {
         }
       }
     }
+    
+    // VRMヒューマノイドの更新を強制
+    if (this.vrm && this.vrm.humanoid) {
+      this.vrm.update(0);
+    }
   }
 
   private updateIdleAnimation(deltaTime: number) {
