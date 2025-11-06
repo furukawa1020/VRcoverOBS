@@ -333,6 +333,8 @@ export class AvatarSystem {
     const humanoid = this.vrm.humanoid;
     if (!humanoid) return;
 
+    console.log('🔍 applyBodyTracking called!', Object.keys(body));
+
     // 各関節のマッピング
     const jointMap: Record<string, string> = {
       shoulder: 'Shoulder',
@@ -356,9 +358,11 @@ export class AvatarSystem {
         const y = sideData.y ?? 0;
         const z = sideData.z ?? 0;
 
-        // VRMのボーン名（例: leftShoulder, rightShoulder）
+        // VRMのボーン名(例: leftShoulder, rightShoulder)
         const vrmBoneName = side === 'left' ? `left${boneName}` : `right${boneName}`;
         const bone = humanoid.getRawBoneNode(vrmBoneName as any);
+        
+        console.log(`🦴 Bone check: ${vrmBoneName} -> ${bone ? '✅ Found' : '❌ Not found'}`);
         
         if (bone) {
           // 座標から回転を計算（簡易版）
