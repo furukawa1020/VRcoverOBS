@@ -371,18 +371,13 @@ export class AvatarSystem {
           const ry = (x - 0.5) * Math.PI;     // Y軸回転(ヨー)
           const rz = (z - 0.5) * Math.PI * 0.5; // Z軸回転(ロール)
 
-          bone.rotation.x = rx;
-          bone.rotation.y = ry;
-          bone.rotation.z = rz;
+          // Quaternionを使って回転を設定(より正確)
+          bone.rotation.set(rx, ry, rz);
+          bone.updateMatrix();
           
           console.log(`🎯 Rotation applied to ${vrmBoneName}:`, { rx: rx.toFixed(2), ry: ry.toFixed(2), rz: rz.toFixed(2) });
         }
       }
-    }
-    
-    // VRMヒューマノイドの更新を強制
-    if (this.vrm && this.vrm.humanoid) {
-      this.vrm.update(0);
     }
   }
 
