@@ -14,10 +14,16 @@ class BodyTracker:
         # MediaPipe setup
         self.mp_pose = mp.solutions.pose
         self.mp_drawing = mp.solutions.drawing_utils
+        
+        # Create Pose with simpler parameters
         self.pose = self.mp_pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,
+            smooth_landmarks=True,
+            enable_segmentation=False,
+            smooth_segmentation=False,
             min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-            model_complexity=1
+            min_tracking_confidence=0.5
         )
         
         # OSC client for sending data to Gateway
