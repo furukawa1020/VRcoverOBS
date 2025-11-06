@@ -365,13 +365,17 @@ export class AvatarSystem {
         console.log(`🦴 Bone check: ${vrmBoneName} -> ${bone ? '✅ Found' : '❌ Not found'}`);
         
         if (bone) {
-          // 座標から回転を計算（簡易版）
-          // y座標を上下の回転に、x座標を左右の回転に、z座標を前後の回転にマッピング
-          const rx = (y - 1.5) * 0.8;  // ピッチ（上下）
-          const ry = (x - 0.5) * 1.5;  // ヨー（左右）
-          const rz = z * 0.6;          // ロール（捻り）
+          // MediaPipe座標(0-1の正規化座標)をそのまま角度に変換
+          // より大きな係数でテスト
+          const rx = (y - 0.5) * Math.PI;     // X軸回転(ピッチ)
+          const ry = (x - 0.5) * Math.PI;     // Y軸回転(ヨー)
+          const rz = (z - 0.5) * Math.PI * 0.5; // Z軸回転(ロール)
 
-          bone.rotation.set(rx, ry, rz);
+          bone.rotation.x = rx;
+          bone.rotation.y = ry;
+          bone.rotation.z = rz;
+          
+          console.log(`🎯 Rotation applied to ${vrmBoneName}:`, { rx: rx.toFixed(2), ry: ry.toFixed(2), rz: rz.toFixed(2) });
         }
       }
     }
