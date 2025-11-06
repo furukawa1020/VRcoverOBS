@@ -30,6 +30,16 @@ except ImportError:
 # Ollama API
 import requests
 
+# TTS
+try:
+    from gtts import gTTS
+    import io
+    import base64
+    TTS_AVAILABLE = True
+except ImportError:
+    TTS_AVAILABLE = False
+    print("⚠️ gTTSがインストールされていません（pip install gtts）")
+
 app = Flask(__name__)
 CORS(app)
 
@@ -148,10 +158,32 @@ def llm_generate(prompt, system_prompt=None):
 
 
 def tts_synthesize(text):
-    """テキストから音声合成（Piper - 将来実装）"""
-    # TODO: Piperの実装
-    print(f"🔊 TTS: {text}")
-    return {"audio": None, "message": "TTS未実装（将来対応）"}
+    """テキストから音声合成（gTTS）"""
+    if not TTS_AVAILABLE:
+        print(f"⚠️ TTS: gTTSが利用できません")
+        return {"audio": None, "message": "TTS未インストール"}
+    
+    try:
+        # gTTSで音声合成
+        tts = gTTS(text=text, lang='ja', slow=False)
+        
+        # メモリ上のバッファに保存
+        audio_buffer = io.BytesIO()
+        tts.write_to_fp(audio_buffer)
+        audio_buffer.seek(0)
+        
+        # Base64エンコード
+        audio_base64 = base64.b64encode(audio_buffer.read()).decode('utf-8')
+        
+        print(f"🔊 TTS: {text[:30]}...")
+        return {
+            "audio": audio_base64,
+            "format": "mp3",
+            "message": "音声合成完了"
+        }
+    except Exception as e:
+        print(f"❌ TTS Error: {e}")
+        return {"audio": None, "message": f"TTS失敗: {str(e)}"}
 
 
 # ===== API エンドポイント =====
@@ -164,7 +196,7 @@ def health_check():
         "services": {
             "stt": whisper_model is not None,
             "llm": check_ollama_status(),
-            "tts": False  # 将来実装
+            "tts": TTS_AVAILABLE
         }
     })
 
@@ -241,13 +273,14 @@ def chat_endpoint():
     
     response_text = llm_result['text']
     
-    # TTS（将来実装）
-    # tts_result = tts_synthesize(response_text)
+    # TTS（音声合成）
+    tts_result = tts_synthesize(response_text)
     
     return jsonify({
         "input": user_input,
         "response": response_text,
-        "audio": None  # 将来: base64エンコード音声
+        "audio": tts_result.get('audio'),
+        "audio_format": tts_result.get('format', 'mp3')
     })
 
 
@@ -269,7 +302,7 @@ if __name__ == '__main__':
 ╠════════════════════════════════════════╣
 ║  STT: Whisper (ローカル)               ║
 ║  LLM: Ollama                           ║
-║  TTS: Piper (将来実装)                 ║
+║  TTS: gTTS (Google Text-to-Speech)     ║
 ║  Body: MediaPipe                       ║
 ╚════════════════════════════════════════╝
     """)
