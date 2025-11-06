@@ -35,7 +35,7 @@ export const THEME = {
 export const CONFIG = {
   // アバター設定
   avatar: {
-    defaultModel: '/models/hakusan_avatar.vrm',
+    defaultModel: '/models/hakusan-avatar.vrm', // ファイル名修正(ハイフン)
     scale: 1.0,
     position: { x: 0, y: 0, z: 0 }, // アバターを地面に配置
     
