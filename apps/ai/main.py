@@ -1,6 +1,6 @@
 """
 VRabater AI Service
-ローカルLLM (Ollama) + STT (Whisper/Vosk) + TTS (Piper)
+ローカルLLM (Ollama) + STT (Whisper/Vosk) + TTS (Piper) + Body Tracking (MediaPipe)
 """
 
 import os
@@ -10,6 +10,9 @@ import threading
 import queue
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+
+# Body Tracking
+from body_tracker import BodyTracker
 
 # 音声処理
 import sounddevice as sd
@@ -63,6 +66,7 @@ CONFIG = {
 whisper_model = None
 audio_queue = queue.Queue()
 is_recording = False
+body_tracker = None  # MediaPipe Body Tracker
 
 
 def init_whisper():
@@ -266,6 +270,7 @@ if __name__ == '__main__':
 ║  STT: Whisper (ローカル)               ║
 ║  LLM: Ollama                           ║
 ║  TTS: Piper (将来実装)                 ║
+║  Body: MediaPipe                       ║
 ╚════════════════════════════════════════╝
     """)
     
@@ -280,6 +285,19 @@ if __name__ == '__main__':
         print(f"⚠️ Ollama未起動: {CONFIG['llm']['url']}")
         print("   起動方法: ollama serve")
     
+    # Body Tracker初期化 & 起動
+    body_tracker = BodyTracker()
+    if body_tracker.start():
+        print("✅ Body Tracking 起動完了")
+    else:
+        print("⚠️ Body Tracking 起動失敗")
+    
     # Flask起動
     print("\n🚀 AIサービス起動: http://localhost:5000\n")
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False)
+    finally:
+        # 終了時にBody Trackerを停止
+        if body_tracker:
+            body_tracker.stop()
+
