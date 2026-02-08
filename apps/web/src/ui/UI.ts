@@ -22,7 +22,7 @@ export class UI {
 
   // 状態
   private isAIEnabled = false;
-  private isAIEnabled = false;
+
   private isVoiceChangerEnabled = false;
   private canvasStreamer: CanvasStreamer | null = null;
 

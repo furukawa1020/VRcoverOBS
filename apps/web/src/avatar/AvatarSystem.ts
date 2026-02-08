@@ -21,7 +21,8 @@ export class AvatarSystem {
 
   // アニメーション状態
   private idleTime = 0;
-  private blinkTime = 0;
+  private blinkTimer = 0;
+
   private nextBlinkTime = 3;
   private rotationLogged = false; // デバッグ用フラグ
   private isBlinking = false;
