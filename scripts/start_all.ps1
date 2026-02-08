@@ -8,7 +8,7 @@ Write-Host ""
 
 # 1. Gateway
 Write-Host "1. Starting Gateway..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'Gateway Service'; cd apps\gateway; node index.js; if (\$?) { Write-Host 'Gateway Stopped' } else { Write-Error 'Gateway Failed'; Read-Host 'Press Enter to close...' }"
+Start-Process cmd -ArgumentList "/c", "start", "Gateway Service", "call", "apps\gateway\start_gateway.bat"
 
 Start-Sleep -Seconds 2
 
