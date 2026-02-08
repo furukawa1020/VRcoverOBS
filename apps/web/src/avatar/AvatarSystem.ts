@@ -264,19 +264,24 @@ export class AvatarSystem {
     // 表情のスムージング（EMA）
     const smooth = CONFIG.avatar.expression.smoothingFactor;
 
-    this.currentExpression.mouthOpen = this.ema(
+    // Helper: EMA
+    const applyEMA = (current: number, target: number, alpha: number) => {
+      return (current || 0) * (1 - alpha) + (target || 0) * alpha;
+    };
+
+    this.currentExpression.mouthOpen = applyEMA(
       this.currentExpression.mouthOpen,
       data.mouthOpen,
       smooth
     );
 
-    this.currentExpression.eyeX = this.ema(
+    this.currentExpression.eyeX = applyEMA(
       this.currentExpression.eyeX,
       data.eyeX,
       CONFIG.avatar.lookAt.smoothingFactor
     );
 
-    this.currentExpression.eyeY = this.ema(
+    this.currentExpression.eyeY = applyEMA(
       this.currentExpression.eyeY,
       data.eyeY,
       CONFIG.avatar.lookAt.smoothingFactor
@@ -292,11 +297,46 @@ export class AvatarSystem {
 
     // 視線の適用
     if (this.vrm.lookAt) {
+      // 目の向き修正: 白目になりすぎないように制限
+      // OpenSeeFace: +Y is Up? 
+      // Three.js: +Y is Up.
+      // 元のコード: (x, y, -1)
+      // 目がひんむく -> Yの値が大きすぎる可能性
+
+      const gazeScale = 0.5; // 移動量を抑える
+      const gazeX = this.currentExpression.eyeX * gazeScale;
+      const gazeY = this.currentExpression.eyeY * gazeScale;
+
       this.vrm.lookAt.lookAt(new THREE.Vector3(
-        this.currentExpression.eyeX,
-        this.currentExpression.eyeY,
-        -1
+        gazeX,
+        gazeY, // そのまま適用してみる (ひんむくならマイナスかも?)
+        1.0    // LookAt target is usually in front (Z+) or back?
+        // Standard VRM: +Z is forward. Camera looks at -Z.
+        // So target should be at +Z?
+        // But default code was -1.
+        // Let's try +1 (Forward)
       ));
+
+      // LookAtのtargetは「ヘッドローカル座標系」か「ワールド」かによる
+      // three-vrm doc: "lookAt( target: THREE.Vector3 )" - world position usually?
+      // No, "The target position in the world space."
+      // If we pass (x, y, 1), that is world (x,y,1). 
+      // If head is at (0, 1.5, 0), looking at (0, 0, 1) means looking DOWN.
+
+      // If vrm.scene is at (0,0,0) (offset managed by humanoid), head is at ~1.5m Y.
+      // To look "Forward", target should be (head.x, head.y, head.z + 1).
+
+      const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
+      if (head) {
+        const headPos = head.getWorldPosition(new THREE.Vector3());
+        // 正面 1m先を見る
+        /* 
+           GazeX/Y are usually -1 to 1 range from tracker?
+           We want to offset the look target from the head position.
+        */
+        const target = headPos.clone().add(new THREE.Vector3(gazeX, gazeY, 1.0)); // +Z is Forward for VRM (Normalized)
+        this.vrm.lookAt.lookAt(target);
+      }
     }
 
     // 頭部回転 (Degrees -> Radians変換    // 頭部回転 (Degrees -> Radians変換 & 補正)
@@ -314,9 +354,20 @@ export class AvatarSystem {
         const rx = data.headRotation.x;
         const correctedPitch = (Math.abs(rx) > 90) ? (rx + (rx > 0 ? -180 : 180)) : rx;
 
+        // 【修正】Z軸（Roll）が -90度（横倒し）になっている場合、+90度して補正
+        const rz = data.headRotation.z;
+        let correctedRoll = rz;
+        if (rz < -60) correctedRoll += 90;
+        else if (rz > 60) correctedRoll -= 90;
+
+        // デバッグログ (頻度を落として表示)
+        if (Math.random() < 0.01) {
+          console.log(`[HeadRot] Raw: ${rx.toFixed(1)}, ${data.headRotation.y.toFixed(1)}, ${rz.toFixed(1)} -> Fixed: ${correctedPitch.toFixed(1)}, ${correctedRoll.toFixed(1)}`);
+        }
+
         const pitch = THREE.MathUtils.degToRad(correctedPitch);
         const yaw = THREE.MathUtils.degToRad(data.headRotation.y);
-        const roll = THREE.MathUtils.degToRad(data.headRotation.z);
+        const roll = THREE.MathUtils.degToRad(correctedRoll);
 
         // クオータニオンで回転を作成（ジンバルロック回避）
         const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -pitch);
