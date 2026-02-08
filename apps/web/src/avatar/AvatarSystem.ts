@@ -497,18 +497,50 @@ export class AvatarSystem {
     if (!this.vrm || !this.vrm.humanoid) return;
 
     // NormalizedBoneNodeを使用
-    const leftArm = this.vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
-    const rightArm = this.vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+    const leftUpper = this.vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
+    const rightUpper = this.vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+    const leftLower = this.vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
+    const rightLower = this.vrm.humanoid.getNormalizedBoneNode('rightLowerArm');
+    const leftHand = this.vrm.humanoid.getNormalizedBoneNode('leftHand');
+    const rightHand = this.vrm.humanoid.getNormalizedBoneNode('rightHand');
 
-    // Normalized Coordinates (VRM1.0 compliant)
-    // Left Arm (+X): To lower (-Y), rotate around -Z (Forward) -> Negative rotation
-    // Right Arm (-X): To lower (-Y), rotate around +Z (Backward) -> Positive rotation
+    // PCを膝の上に置いている想定のポーズ (Typing on Lap)
 
-    if (leftArm) {
-      leftArm.rotation.set(0, 0, -Math.PI / 3); // -60度 (左腕を下げる)
+    // 上腕 (UpperArm): 下ろしつつ、少し前に出す
+    // Z軸: 下ろす (左=負, 右=正)
+    // Y軸: 前に出す (左=正, 右=負) ※Normalizedの場合
+
+    const upperArmDown = 1.3; // 約75度 (しっかり下ろす)
+    const upperArmForward = 0.3; // 約17度 (少し前に)
+
+    if (leftUpper) {
+      // 左: Zマイナスで下げる、Yプラスで前、Xマイナスで内側?
+      leftUpper.rotation.set(0, upperArmForward, -upperArmDown);
     }
-    if (rightArm) {
-      rightArm.rotation.set(0, 0, Math.PI / 3); // +60度 (右腕を下げる)
+    if (rightUpper) {
+      // 右: Zプラスで下げる、Yマイナスで前
+      rightUpper.rotation.set(0, -upperArmForward, upperArmDown);
+    }
+
+    // 前腕 (LowerArm): 肘を曲げて手を前に
+    // Y軸: 曲げる (前腕の回転軸) -> Varies by model but usually Y in T-pose logic
+    const elbowBend = 1.5; // 約85度 (直角近く曲げる)
+
+    if (leftLower) {
+      // 左肘: Yプラスで内側(前)に曲がるはず (Normalized)
+      leftLower.rotation.set(0, elbowBend, 0);
+    }
+    if (rightLower) {
+      // 右肘: Yマイナスで内側(前)に曲がるはず
+      rightLower.rotation.set(0, -elbowBend, 0);
+    }
+
+    // 手首 (Hand): 文字を打つ感じで少し内側に
+    if (leftHand) {
+      leftHand.rotation.set(0, -0.2, 0);
+    }
+    if (rightHand) {
+      rightHand.rotation.set(0, 0.2, 0);
     }
   }
 
