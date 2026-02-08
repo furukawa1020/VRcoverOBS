@@ -37,6 +37,8 @@ wss.on('connection', (ws) => {
 
 // OpenSeeFace UDPサーバー (バイナリパケット用)
 const faceUdpServer = dgram.createSocket('udp4');
+let packetCount = 0;
+
 
 // MediaPipe OSCサーバー
 const oscServerBody = new osc.UDPPort({
@@ -71,7 +73,13 @@ let trackingData = {
 
 // OpenSeeFace UDPメッセージハンドラ
 faceUdpServer.on('message', (msg, rinfo) => {
+  packetCount++;
+  if (packetCount % 100 === 0) {
+    console.log(`📨 Face UDP: ${packetCount} packets (Last: ${rinfo.address}:${rinfo.port})`);
+  }
+
   try {
+
     // OpenSeeFaceのバイナリフォーマットをパース
     // フォーマット: time (8 bytes) + id (4 bytes) + データ (可変長)
     if (msg.length < 12) return;
@@ -150,18 +158,18 @@ oscServerBody.on('message', (oscMsg) => {
   try {
     const address = oscMsg.address;
     const args = oscMsg.args.map(arg => arg.value);
-    
+
     // デバッグ: 5%の確率でログ出力（体データは少ないので確率アップ）
     if (Math.random() < 0.05) {
       console.log('[OSC BODY]', address, '→', args);
     }
-    
+
     // 体データのパース: /body/shoulder/left → body.shoulder.left
     if (address.startsWith('/body/')) {
       const parts = address.split('/');
       const joint = parts[2]; // shoulder, elbow, wrist, hip, knee, ankle
       const side = parts[3];  // left, right
-      
+
       if (trackingData.body[joint] && trackingData.body[joint][side]) {
         trackingData.body[joint][side] = {
           x: args[0] || 0,
@@ -170,7 +178,7 @@ oscServerBody.on('message', (oscMsg) => {
         };
       }
     }
-    
+
     trackingData.timestamp = Date.now();
     broadcastToClients(trackingData);
   } catch (error) {
@@ -180,7 +188,7 @@ oscServerBody.on('message', (oscMsg) => {
 
 function broadcastToClients(data) {
   const message = JSON.stringify(data);
-  
+
   connectedClients.forEach((client) => {
     if (client.readyState === 1) { // OPEN
       client.send(message);

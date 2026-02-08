@@ -32,17 +32,22 @@ export class TrackingClient {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data) as TrackingData;
-            
+
             // デバッグログ（body データの受信確認）
             if (data.body?.shoulder?.left) {
               console.log('[TrackingClient] 📥 Body data:', {
                 leftShoulderX: data.body.shoulder.left.x.toFixed(2),
-                rightShoulderX: data.body.shoulder.right?.x.toFixed(2),
                 timestamp: data.timestamp
               });
             }
-            
+
+            // デバッグログ（face データの受信確認 - 間引き）
+            if (data.face && Math.random() < 0.05) {
+              console.log('[TrackingClient] 📥 Face data received', data.face.rotation);
+            }
+
             this.emit('tracking-data', data);
+
           } catch (error) {
             console.error('トラッキングデータのパースエラー:', error);
           }
