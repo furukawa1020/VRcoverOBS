@@ -38,7 +38,7 @@ class BodyTracker:
             face_options = vision.FaceLandmarkerOptions(
                 base_options=python.BaseOptions(model_asset_path=face_model_path),
                 running_mode=vision.RunningMode.IMAGE,
-                output_face_blendshapes=True
+                output_face_blendshapes=False
             )
             self.face_landmarker = vision.FaceLandmarker.create_from_options(face_options)
             print("[OK] FaceLandmarker initialized")
@@ -103,11 +103,16 @@ class BodyTracker:
     
     def _tracking_loop(self):
         """Main tracking loop"""
+        fps_time = time.time()
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
-                time.sleep(0.1)
+                print("⚠️ Failed to capture frame. Retrying...")
+                time.sleep(0.5)
                 continue
+            
+            # Debug log to confirmed frame reading
+            # print(f"[DEBUG] Frame captured: {frame.shape}")
             
             frame = cv2.flip(frame, 1)
             img_h, img_w, _ = frame.shape
@@ -125,11 +130,14 @@ class BodyTracker:
                 
                 # 2. Face Tracking (Rotation & Expressions)
                 if self.face_landmarker:
+                    # print("DEBUG: Pre Face")
                     face_result = self.face_landmarker.detect(mp_image)
+                    # print("DEBUG: Post Face")
                     if face_result and face_result.face_landmarks:
                         self._process_face(face_result.face_landmarks[0], img_w, img_h)
+            
             except Exception as e:
-                # print(f"Tracking error: {e}")
+                # print(f"[ERROR] Tracking error: {e}")
                 pass
             
             # CPU performance control
