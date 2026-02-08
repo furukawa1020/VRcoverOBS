@@ -181,6 +181,7 @@ export class AvatarSystem {
         CONFIG.avatar.position.z
       );
       vrm.scene.scale.setScalar(CONFIG.avatar.scale);
+      vrm.scene.rotation.y = Math.PI; // 初期状態で正面を向ける
 
       // 回転はVRoidAvatar.tsで管理
       console.log('✅ VRMモデル配置完了');
@@ -292,7 +293,7 @@ export class AvatarSystem {
       ));
     }
 
-    // 頭部回転
+    // 頭部回転 (Degrees -> Radians変換 & 補正)
     if (data.headRotation) {
       const head = this.vrm.humanoid?.getRawBoneNode('head');
       if (head) {
@@ -572,7 +573,7 @@ export class AvatarSystem {
       this.hasBodyTracking = false;
     }
 
-    // ボディトラッキングがない場合は、腕を下ろす
+    // ボディトラッキングがない場合は、腕を下ろす (Aポーズ)
     if (!this.hasBodyTracking) {
       this.resetToIdlePose();
     }
@@ -592,8 +593,8 @@ export class AvatarSystem {
     const swayPhase = (this.idleTime * 0.3) % (Math.PI * 2);
     const swayValue = Math.sin(swayPhase) * CONFIG.avatar.idle.swayAmplitude;
 
+    // 180度回転して正面を向かせる (Math.PI) + 揺れ
     if (this.vrm.scene) {
-      // 180度回転して正面を向かせる (Math.PI) + 揺れ
       this.vrm.scene.rotation.set(0, Math.PI, swayValue);
     }
   }
