@@ -80,7 +80,6 @@ faceUdpServer.on('message', (msg, rinfo) => {
 
   try {
 
-    // OpenSeeFaceのバイナリフォーマットをパース
     // OpenSeeFaceのバイナリフォーマット
     // Time(8) + ID(4) + W(4) + H(4) + EyeR(4) + EyeL(4) + Success(1) + PnP(4) + Qx(4) + Qy(4) + Qz(4) + Qw(4) + ...
     if (msg.length < 12) return;
@@ -114,12 +113,6 @@ faceUdpServer.on('message', (msg, rinfo) => {
     const pnpError = readFloat();
 
     // 5. Quaternion Rotation
-    // OpenSeeFace (Unity Convention: Left-Handed, Y-Up)
-    // We need to convert to Three.js (Right-Handed, Y-Up)
-    // Typically: x -> -x, y -> y, z -> -z for position.
-    // For Quaternion: x -> x, y -> -y, z -> -z, w -> w ?
-    // Let's try standard conversion for webcam mirroring.
-
     let qx = readFloat();
     let qy = readFloat();
     let qz = readFloat();
@@ -127,13 +120,10 @@ faceUdpServer.on('message', (msg, rinfo) => {
 
     // Coordinate System Conversion
     // Unity (LHS) -> Three.js (RHS)
-    // Swap X and Z? Or Negate?
-    // Experimentally: 
-    // If input is mirrored (webcam), we might need to flip X.
-
-    // Trial 1: x, -y, -z, w (Conjugate-ish?)
+    // Trial 1: x -> -x, y -> y, z -> -z for position.
+    // Experimentally flipped x and z components for rotation
     qx = -qx;
-    qy = qy;
+    qy = qy; // y is usually up, so keep
     qz = -qz;
     // qw = qw;
 
@@ -147,7 +137,9 @@ faceUdpServer.on('message', (msg, rinfo) => {
     const ty = readFloat();
     const tz = readFloat();
 
-    // Quaternion → Euler変換
+    // --- Data Processing ---
+
+    // Quaternion to Euler conversion for Three.js
     const sinr_cosp = 2 * (qw * qx + qy * qz);
     const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
     const roll = Math.atan2(sinr_cosp, cosr_cosp);
@@ -179,21 +171,6 @@ faceUdpServer.on('message', (msg, rinfo) => {
     trackingData.blink = 1.0 - ((rightEyeOpen + leftEyeOpen) / 2.0);
 
     // Mouth - OpenSeeFace sends landmarks later, but for now we might not have them easily parsed
-    // The standard packet ends here? No, landmarks follow.
-    // For now, let's just get head/eyes working.
-    // We can infer mouth open from landmarks if we parse them, or just default to 0 for now until verified.
-    // NOTE: Facetracker.py sends landmarks AFTER translation.
-    // Let's iterate landmarks if we want smooth mouth.
-
-    // ... Parsing landmarks for mouth (optional for basic movement) ...
-    // There are 66 landmarks * 2 floats (x,y) + 1 float (conf) = 3 floats per landmark
-    // 66 * 12 bytes = 792 bytes.
-
-    // Simplified Mouth Calculation (if enough data)
-    // We need landmark 62 (top lip) and 66 (bottom lip)? 
-    // Facetracker.py landmarks are: y, x, c
-
-    // For now, keep mouth static or use a simple hack if user speaks (audio based is handled elsewhere).
     trackingData.mouthOpen = 0;
 
     trackingData.confidence = success ? 0.9 : 0.0;
@@ -213,42 +190,51 @@ faceUdpServer.on('message', (msg, rinfo) => {
   }
 });
 
-// 体トラッキングデータ受信
+faceUdpServer.on('error', (err) => {
+  console.log(`❌ Face UDP Error:\n${err.stack}`);
+  faceUdpServer.close();
+});
+
+faceUdpServer.bind(FACE_UDP_PORT);
+
+
+// MediaPipe OSCメッセージハンドラ
 oscServerBody.on('message', (oscMsg) => {
+  // /body/shoulder/left/position x y z
+  // アドレスをパースしてtrackingData.bodyに格納
+  const address = oscMsg.address;
+  const args = oscMsg.args;
+
   try {
-    const address = oscMsg.address;
-    const args = oscMsg.args.map(arg => arg.value);
+    const parts = address.split('/');
+    // example: ['', 'body', 'shoulder', 'left', 'position']
+    if (parts.length >= 5 && parts[1] === 'body') {
+      const part = parts[2]; // shoulder
+      const side = parts[3]; // left
 
-    // デバッグ: 5%の確率でログ出力（体データは少ないので確率アップ）
-    if (Math.random() < 0.05) {
-      console.log('[OSC BODY]', address, '→', args);
-    }
-
-    // 体データのパース: /body/shoulder/left → body.shoulder.left
-    if (address.startsWith('/body/')) {
-      const parts = address.split('/');
-      const joint = parts[2]; // shoulder, elbow, wrist, hip, knee, ankle
-      const side = parts[3];  // left, right
-
-      if (trackingData.body[joint] && trackingData.body[joint][side]) {
-        trackingData.body[joint][side] = {
-          x: args[0] || 0,
-          y: args[1] || 0,
-          z: args[2] || 0,
-        };
+      if (trackingData.body[part] && trackingData.body[part][side]) {
+        trackingData.body[part][side] = { x: args[0], y: args[1], z: args[2] };
       }
     }
 
-    trackingData.timestamp = Date.now();
+    // OSCデータ受信時は即時ブロードキャストするか、一定間隔にするか
+    // ここでは顔データと一緒に送るため、更新のみ行う
     broadcastToClients(trackingData);
-  } catch (error) {
-    console.error('体トラッキングエラー:', error);
+
+  } catch (e) {
+    console.error('OSCパースエラー:', e);
   }
 });
 
+oscServerBody.on('error', (error) => {
+  console.log("OSC Error:", error);
+});
+
+oscServerBody.open();
+
+
 function broadcastToClients(data) {
   const message = JSON.stringify(data);
-
   connectedClients.forEach((client) => {
     if (client.readyState === 1) { // OPEN
       client.send(message);
@@ -256,9 +242,7 @@ function broadcastToClients(data) {
   });
 }
 
-// サーバー起動
-server.listen(WS_PORT, () => {
-  console.log(`
+console.log(`
 ╔════════════════════════════════════════╗
 ║  VRabater Gateway Server (全身対応)    ║
 ╠════════════════════════════════════════╣
@@ -268,34 +252,4 @@ server.listen(WS_PORT, () => {
 ╚════════════════════════════════════════╝
 
 ⏳ トラッキングシステムの起動を待機中...
-  `);
-});
-
-// UDPサーバー起動 (顔 - OpenSeeFace)
-faceUdpServer.bind(FACE_UDP_PORT, '0.0.0.0');
-faceUdpServer.on('listening', () => {
-  console.log('✅ 顔トラッキングUDP起動:', FACE_UDP_PORT);
-});
-
-// OSCサーバー起動 (体 - MediaPipe)
-oscServerBody.open();
-oscServerBody.on('ready', () => {
-  console.log('✅ 体トラッキングOSC起動:', BODY_OSC_PORT);
-});
-
-// エラーハンドリング
-faceUdpServer.on('error', (error) => {
-  console.error('❌ 顔UDPエラー:', error.message);
-});
-
-oscServerBody.on('error', (error) => {
-  console.error('❌ 体OSCエラー:', error);
-});
-
-process.on('SIGINT', () => {
-  console.log('\n🛑 Gateway停止中...');
-  faceUdpServer.close();
-  oscServerBody.close();
-  wss.close();
-  process.exit(0);
-});
+`);
