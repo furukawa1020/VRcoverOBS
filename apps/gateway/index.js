@@ -44,7 +44,7 @@ let packetCount = 0;
 const oscServerBody = new osc.UDPPort({
   localAddress: '0.0.0.0',
   localPort: BODY_OSC_PORT,
-  metadata: true
+  metadata: false
 });
 
 // トラッキングデータのパース用
