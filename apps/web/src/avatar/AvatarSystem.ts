@@ -181,7 +181,7 @@ export class AvatarSystem {
         CONFIG.avatar.position.z
       );
       vrm.scene.scale.setScalar(CONFIG.avatar.scale);
-      vrm.scene.rotation.y = Math.PI; // 初期状態で正面を向ける
+      vrm.scene.rotation.y = 0; // 初期状態で正面を向ける (0度)
 
       // 回転はVRoidAvatar.tsで管理
       console.log('✅ VRMモデル配置完了');
@@ -297,7 +297,8 @@ export class AvatarSystem {
 
     // 頭部回転 (Degrees -> Radians変換    // 頭部回転 (Degrees -> Radians変換 & 補正)
     if (data.headRotation) {
-      const head = this.vrm.humanoid?.getRawBoneNode('head');
+      // RawBoneNodeではなくNormalizedBoneNodeを使用してリグの差異を吸収
+      const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
       if (head) {
         // 顔が横に90度なる -> Z軸(Roll)にY軸(Yaw)の値が入っている可能性など
         // OpenSeeFace: X=Pitch, Y=Yaw, Z=Roll
@@ -382,24 +383,19 @@ export class AvatarSystem {
       if (body.shoulder.left && body.elbow.left) {
         const s = body.shoulder.left;
         const e = body.elbow.left;
-        const bone = humanoid.getRawBoneNode('leftUpperArm' as any);
+        // NormalizedBoneNodeを使用
+        const bone = humanoid.getNormalizedBoneNode('leftUpperArm' as any);
         if (bone) {
-          // 上下(Y差分) -> Z回転 (下げる=マイナス? VRMによる)
-          // 左右(X差分) -> Y回転 (前後?)
-          // 前後(Z差分) -> X回転?
-
-          // VRM標準: Tポーズ(腕はX軸)。Z回転で腕が上下する (Z正=前? Z負=後ろ?)
-          // 一般的なリグ: Z回転で腕が下がる (約-60度～-80度でAポーズ)
+          // Normalized座標系: Tポーズ(腕は+X方向)。+Yが上、+Zが後ろ
+          // 腕を下げる(+X -> -Y): -Z回転
 
           const dy = e.y - s.y; // 下に行くとプラス
-          const dx = e.x - s.x; // 右に行くとプラス
 
           // 腕を下げる: dyがプラスのとき。Z回転をマイナスにする
           const rotZ = -(dy * 2.5);
-          // 腕を前に出す: dxはどうなる？ (一旦無視またはY回転)
 
           // 基本姿勢(Aポーズ)からのオフセットとして適用
-          bone.rotation.set(0, 0, rotZ + 0.2); // 0.2は補正
+          bone.rotation.set(0, 0, rotZ);
         }
       }
 
@@ -407,18 +403,20 @@ export class AvatarSystem {
       if (body.shoulder.right && body.elbow.right) {
         const s = body.shoulder.right;
         const e = body.elbow.right;
-        const bone = humanoid.getRawBoneNode('rightUpperArm' as any);
+        const bone = humanoid.getNormalizedBoneNode('rightUpperArm' as any);
         if (bone) {
           const dy = e.y - s.y;
 
-          // 右腕: 腕を下げる -> Z回転をプラスにする
+          // 右腕(-X): 腕を下げる(-X -> -Y): +Z回転
           const rotZ = (dy * 2.5);
 
-          bone.rotation.set(0, 0, rotZ - 0.2);
+          bone.rotation.set(0, 0, rotZ);
         }
       }
     }
 
+    // 肘、手首などは一旦コメントアウトして、まずは「腕が下がる」ことを確認する
+    // 安定したら再度有効化する
   }
 
   /**
@@ -427,15 +425,19 @@ export class AvatarSystem {
   private resetToIdlePose() {
     if (!this.vrm || !this.vrm.humanoid) return;
 
-    // 腕を自然に下ろす (Aポーズ)
-    const leftArm = this.vrm.humanoid.getRawBoneNode('leftUpperArm');
-    const rightArm = this.vrm.humanoid.getRawBoneNode('rightUpperArm');
+    // NormalizedBoneNodeを使用
+    const leftArm = this.vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
+    const rightArm = this.vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+
+    // Normalized Coordinates (VRM1.0 compliant)
+    // Left Arm (+X): To lower (-Y), rotate around -Z (Forward) -> Negative rotation
+    // Right Arm (-X): To lower (-Y), rotate around +Z (Backward) -> Positive rotation
 
     if (leftArm) {
-      leftArm.rotation.set(0, 0, Math.PI / 3); // 60度おろす
+      leftArm.rotation.set(0, 0, -Math.PI / 3); // -60度 (左腕を下げる)
     }
     if (rightArm) {
-      rightArm.rotation.set(0, 0, -Math.PI / 3); // 60度おろす
+      rightArm.rotation.set(0, 0, Math.PI / 3); // +60度 (右腕を下げる)
     }
   }
 
@@ -465,18 +467,22 @@ export class AvatarSystem {
     const breathValue = Math.sin(breathPhase * Math.PI * 2) *
       CONFIG.avatar.idle.breathingAmplitude;
 
-    const chest = this.vrm.humanoid?.getRawBoneNode('chest');
+    // NormalizeBoneNodeを使用
+    const chest = this.vrm.humanoid?.getNormalizedBoneNode('chest');
     if (chest) {
-      chest.position.y = breathValue;
+      // Normalized bone translation might behave differently, but usually fine for small offsets
+      // Actually chest translation is bone elongation? Rotation is safer.
+      // But let's try rotation for breath: X-rotation (Pitch)
+      chest.rotation.set(Math.sin(breathPhase * Math.PI * 2) * 0.05, 0, 0);
     }
 
     // わずかな揺れ(川の流れのイメージ)
     const swayPhase = (this.idleTime * 0.3) % (Math.PI * 2);
     const swayValue = Math.sin(swayPhase) * CONFIG.avatar.idle.swayAmplitude;
 
-    // 180度回転して正面を向かせる (Math.PI) + 揺れ
+    // 180度回転して正面を向かせる (Math.PI) -> 0度に変更 (VRMは+Z向き、カメラは+Zから-Zを見るため)
     if (this.vrm.scene) {
-      this.vrm.scene.rotation.set(0, Math.PI, swayValue);
+      this.vrm.scene.rotation.set(0, 0, swayValue);
     }
   }
 
