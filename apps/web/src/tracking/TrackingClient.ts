@@ -54,8 +54,9 @@ export class TrackingClient {
         };
 
         this.ws.onerror = (error) => {
-          console.error('❌ WebSocketエラー:', error);
-          reject(error);
+          console.error('❌ WebSocketエラー (接続試行中):', error);
+          // reject(error); // ここでrejectするとアプリが落ちるため無効化
+          // oncloseが呼ばれて再接続されるはず
         };
 
         this.ws.onclose = () => {
@@ -64,7 +65,9 @@ export class TrackingClient {
         };
 
       } catch (error) {
-        reject(error);
+        console.error('⚠️ トラッキングゲートウェイへの初期接続に失敗しました（バックグラウンドで再接続を試みます）:', error);
+        this.attemptReconnect();
+        resolve(); // アプリケーションの起動を止めない
       }
     });
   }
