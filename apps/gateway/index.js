@@ -127,34 +127,56 @@ faceUdpServer.on('message', (msg, rinfo) => {
     qz = -qz;
     // qw = qw;
 
-    // 6. Euler Angles (Optional, but we use Quaternions)
-    const ex = readFloat();
-    const ey = readFloat();
-    const ez = readFloat();
+    // 6. Euler Angles (Pitch, Yaw, Roll)
+    // OpenSeeFace sends these in degrees or radians? Usually degrees in UI, but struct pack might be radians.
+    // Let's assume Radians for now as trimesh/numpy usually work in radians, but let's check values.
+    // If values are like 10, 20, 30 -> Degrees. If 0.1, 0.5 -> Radians.
+    // But logs showed 1.6, 3.0 before... 
+
+    const ex = readFloat(); // Pitch?
+    const ey = readFloat(); // Yaw?
+    const ez = readFloat(); // Roll?
 
     // 7. Translation (Face Position)
     const tx = readFloat();
     const ty = readFloat();
     const tz = readFloat();
 
-    // --- Data Processing ---
+    // Use Euler directly
+    // OpenSeeFace Euler is Y-Up, LHS?
+    // Try: Pitch(X) = -ex, Yaw(Y) = -ey, Roll(Z) = -ez
+    // Adjust based on observation.
 
-    // Quaternion to Euler conversion for Three.js
-    const sinr_cosp = 2 * (qw * qx + qy * qz);
-    const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
-    const roll = Math.atan2(sinr_cosp, cosr_cosp);
+    // Note: If 1.6/3.0 values persist, then byte alignment is wrong.
+    // But assuming 0.0 is forward:
 
-    const sinp = 2 * (qw * qy - qz * qx);
-    const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
-
-    const siny_cosp = 2 * (qw * qz + qx * qy);
-    const cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
-    const yaw = Math.atan2(siny_cosp, cosy_cosp);
+    // Euler to Three.js mapping
+    // ex (Pitch), ey (Yaw), ez (Roll)
+    // Invert all for mirror?
 
     trackingData.headRotation = {
-      x: -pitch, // Negate pitch to match VRM look (Up/Down)
-      y: -yaw,   // Negate yaw for Mirror effect
-      z: -roll   // Negate roll
+      x: -ex * (Math.PI / 180.0), // Assuming Degrees? No, OpenSeeFace usually sends Degrees in OSC but maybe Floats in UDP?
+      // Wait, facetracker.py uses f.euler. f.euler comes from solvePnP? 
+      // Actually Tracker.py: self.euler = decomposition of rotation matrix.
+      // Usually Radians in math libraries.
+      // Let's try Radians first (direct pass).
+      // If it moves CRAZY fast, it's degrees.
+
+      x: -ex,
+      y: -ey,
+      z: ez   // Trial: Z might not need flip?
+    };
+
+    // Override with simple mapping for debugging
+    // We will log these values to see what they are.
+    if (Math.random() < 0.01) {
+      console.log(`[UDP FACE RAW] Pitch:${ex.toFixed(2)} Yaw:${ey.toFixed(2)} Roll:${ez.toFixed(2)}`);
+    }
+
+    trackingData.headRotation = {
+      x: -ex + 0.2, // Offset adjustment (Face usually looks down a bit)
+      y: -ey,
+      z: -ez
     };
 
     // Face Position
@@ -189,13 +211,6 @@ faceUdpServer.on('message', (msg, rinfo) => {
     console.error('❌ 顔UDPパースエラー:', error.message);
   }
 });
-
-faceUdpServer.on('error', (err) => {
-  console.log(`❌ Face UDP Error:\n${err.stack}`);
-  faceUdpServer.close();
-});
-
-faceUdpServer.bind(FACE_UDP_PORT);
 
 
 // MediaPipe OSCメッセージハンドラ
