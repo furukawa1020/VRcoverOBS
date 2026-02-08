@@ -8,23 +8,23 @@ Write-Host ""
 
 # 1. Gateway
 Write-Host "1. Starting Gateway..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Gateway Service'; cd apps\gateway; npm run dev"
+Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'Gateway Service'; cd apps\gateway; node index.js"
 
 Start-Sleep -Seconds 2
 
 # 2. Web UI
 Write-Host "2. Starting Web UI..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Web UI'; cd apps\web; npm run dev"
+Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'Web UI'; cd apps\web; npm run dev"
 
 Start-Sleep -Seconds 2
 
 # 3. AI Service
 Write-Host "3. Starting AI Service..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'AI Service'; cd apps\ai; python main.py"
+Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'AI Service'; cd apps\ai; python main.py"
 
 # 4. OpenSeeFace (Face Tracking)
 Write-Host "4. Starting OpenSeeFace..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Face Tracker'; python tools/OpenSeeFace/facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1"
+Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'Face Tracker'; python tools/OpenSeeFace/facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1"
 
 Start-Sleep -Seconds 2
 
