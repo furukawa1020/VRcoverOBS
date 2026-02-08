@@ -13,7 +13,8 @@ $ProjectRoot = Split-Path -Parent $ScriptDir
 # 1. Gateway
 Write-Host "1. Starting Gateway..." -ForegroundColor Yellow
 $GatewayScript = Join-Path $ProjectRoot "apps\gateway\start_gateway.bat"
-Start-Process cmd -ArgumentList "/c", "start", "Gateway", "call", "`"$GatewayScript`""
+# Start-Process -FilePath "$GatewayScript"
+Write-Host "   (Gateway is managed by AI Agent)" -ForegroundColor Gray
 
 Start-Sleep -Seconds 2
 
