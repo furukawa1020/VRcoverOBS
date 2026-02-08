@@ -151,6 +151,7 @@ export class AvatarSystem {
     */
   }
 
+
   async loadVRM(path: string) {
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
@@ -243,6 +244,7 @@ export class AvatarSystem {
 
     console.log('✅ プロシージャルアバター生成完了！');
   }
+
 
   updateFromTracking(data: TrackingData) {
     if (this.useProceduralAvatar && this.proceduralAvatar) {
@@ -492,15 +494,14 @@ export class AvatarSystem {
             const dz = e.z - s.z; // 前に行くとマイナス? (MediaPipe Z: Close is negative)
 
             // Z回転（腕の上げ下げ）: Y差分
-            const rotZ = -(dy * 2.5);
-            // Y回転（腕の前後）: Z差分 (前に行くとY回転プラス?)
-            // VRM LeftUpperArm: +Y rotates forward? No, check resetToIdlePose.
-            // resetToIdlePose: Y=0.3 (Forward). So +Y is Forward.
-            // dz is negative when forward. So -dz.
-            const rotY = -(dz * 2.0);
+            const rotZ = -(dy * 2.0); // 係数を少し下げる (2.5 -> 2.0)
+            // Y回転（腕の前後）: Z差分
+            // ユーザー報告: 前に出すと後ろに行く -> 符号反転
+            const rotY = (dz * 2.5); // 係数を少し下げる (3.0 -> 2.5)
 
             if (!isNaN(rotZ)) {
-              bone.rotation.set(0, rotY, rotZ);
+              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY, rotZ));
+              this.setTargetRotation('leftUpperArm', q);
             }
           }
 
@@ -510,33 +511,43 @@ export class AvatarSystem {
             const lowerArm = humanoid.getNormalizedBoneNode('leftLowerArm');
 
             if (lowerArm && (w.x !== 0 || w.y !== 0)) {
-              // 肘の曲げ: 上腕ベクトルと前腕ベクトルのなす角...だが簡易的にY差分で見る
-              // 手首が肘より上にあれば曲げる
-              // あるいは距離で判定
+              // 肘の曲げ: ベクトル角度で計算 (堅牢化)
+              // Upper: s -> e
+              const vUpper = new THREE.Vector3(e.x - s.x, e.y - s.y, e.z - s.z).normalize();
+              // Lower: e -> w
+              const vLower = new THREE.Vector3(w.x - e.x, w.y - e.y, w.z - e.z).normalize();
 
-              // 簡易実装: 手首が高い位置にある(=Yが小さい)ほど曲げる
-              // e.y (Elbow Y) - w.y (Wrist Y). If positive, wrist is higher.
-              const diffY = e.y - w.y;
-              // 曲げ (Y軸回転? Normalized LowerArm: Y is axis?)
-              // resetToIdlePose used Y-axis rotation for bend.
-              // Bend ranges from 0 (straight) to 2.5 (fully bent).
-              let bend = diffY * 4.0;
-              if (bend < 0) bend = 0;
-              if (bend > 2.5) bend = 2.5;
+              // 内積: cos(theta)
+              let dot = vUpper.dot(vLower);
+              // 誤差修正 (-1 ~ 1)
+              dot = Math.max(-1, Math.min(1, dot));
 
-              if (bend > 2.5) bend = 2.5;
+              // 角度 (0:真っ直ぐ, PI:折りたたみ) -> VRMは 0:真っ直ぐ
+              // ベクトルが一直線の時 dot=1 -> acos(1)=0. 
+              // 折りたたむ時 dot=-1 -> acos(-1)=PI.
+              // しかしMediaPipeの座標系で一直線(伸びている)ならdotは正。
+              // 曲がると方向が変わる。
+              // ベクトル定義: 上腕(肩->肘), 前腕(肘->手首).
+              // 腕を伸ばすと、ほぼ同じ向き -> dot=1. angle=0.
+              // 腕を曲げると... 90度でdot=0. angle=PI/2.
+              // 完全に折りたたむとdot=-1. angle=PI.
 
-              // lowerArm.rotation.set(0, bend, 0);
+              let bend = Math.acos(dot);
+
+              // 過剰な曲がりを制限 (2.7くらいまで)
+              if (bend > 2.7) bend = 2.7;
+
+              // console.log(`Left Bend: ${bend.toFixed(2)}`);
+
               const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, bend, 0));
               this.setTargetRotation('leftLowerArm', q);
 
               // --- ピースサイン判定 (Z軸) ---
-              // 手首がカメラに近い (Z < -0.3 くらい？) 場合にピース
+              // 手首がカメラに近い (Z < -0.15 くらい？) 場合にピース
               // 基準: 肩のZ位置からどれくらい前か
               const distZ = w.z - s.z;
-              // console.log(`LeftHand Z-Dist: ${distZ.toFixed(2)}`);
 
-              if (distZ < -0.2) { // 肩より20cm以上前
+              if (distZ < -0.15) { // 閾値を緩和 (-0.2 -> -0.15)
                 this.setFingerPose('left', 'peace');
               } else {
                 this.setFingerPose('left', 'neutral');
@@ -559,11 +570,12 @@ export class AvatarSystem {
             const dy = e.y - s.y;
             const dz = e.z - s.z;
 
-            const rotZ = (dy * 2.5); // 右はプラスで下がる
-            const rotY = (dz * 2.0); // 右は...符号反転? resetToIdlePose: -0.3 (Forward). So -dz.
+            const rotZ = (dy * 2.0); // 右はプラスで下がる (2.5 -> 2.0)
+            const rotY = -(dz * 2.5); // 符号反転 (元: dz * 2.0 -> 3.0 -> 2.5)
 
             if (!isNaN(rotZ)) {
-              bone.rotation.set(0, rotY, rotZ);
+              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY, rotZ));
+              this.setTargetRotation('rightUpperArm', q);
             }
           }
 
@@ -573,19 +585,22 @@ export class AvatarSystem {
             const lowerArm = humanoid.getNormalizedBoneNode('rightLowerArm');
 
             if (lowerArm && (w.x !== 0 || w.y !== 0)) {
-              const diffY = e.y - w.y;
-              let bend = diffY * 4.0;
-              if (bend < 0) bend = 0;
-              if (bend > 2.5) bend = 2.5;
+              // ベクトル計算
+              const vUpper = new THREE.Vector3(e.x - s.x, e.y - s.y, e.z - s.z).normalize();
+              const vLower = new THREE.Vector3(w.x - e.x, w.y - e.y, w.z - e.z).normalize();
 
-              // 右肘: マイナスで曲がる (resetToIdlePose: -1.5)
-              // lowerArm.rotation.set(0, -bend, 0);
+              let dot = vUpper.dot(vLower);
+              dot = Math.max(-1, Math.min(1, dot));
+              let bend = Math.acos(dot);
+              if (bend > 2.7) bend = 2.7;
+
+              // 右肘: マイナスで曲がる
               const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -bend, 0));
               this.setTargetRotation('rightLowerArm', q);
 
               // --- ピースサイン判定 (Z軸) ---
               const distZ = w.z - s.z;
-              if (distZ < -0.2) {
+              if (distZ < -0.15) {
                 this.setFingerPose('right', 'peace');
               } else {
                 this.setFingerPose('right', 'neutral');
@@ -620,50 +635,75 @@ export class AvatarSystem {
       this.setTargetRotation(boneName, q);
     };
 
-    const prefix = hand === 'left' ? 'left' : 'right';
-    // 符号調整: 右手・左手で曲げ方向が違う場合があるが、
-    // VRM Normalized: +Z is usually Curl (Local) or -Z?
-    // Usually +Z or -Z rotates the finger inward (curl).
-    // Let's assume +Z curls (Standard Unity Humanoid).
-    // Actually VRM 1.0 Normalized:
-    // +X is Twist?
-    // Let's try Z-axis curl. If it bends backwards, flip sign.
+    // 符号調整: 
+    // Z軸: 曲げ (Curl) -> Left: -Z, Right: +Z (Usually) ... Based on previous tests: Left needs negative to curl? 
+    // Y軸: 開き (Splay) -> Left: -Y opens out? Right: +Y opens out?
 
-    const curl = (hand === 'left') ? -1.0 : 1.0; // 試行錯誤: 左はマイナスで曲がる?
+    // VRM 1.0 Normalized (T-Pose):
+    // Left Hand: +Y is Forward (Thumb direction), +Z is Down? No.
+    // Let's assume Standard Unity Humanoid Coordinates for Normalized Bones.
+    // Curl: Rotation around Z-axis. 
+    // Spread: Rotation around Y-axis.
+
+    const prefix = hand === 'left' ? 'left' : 'right';
+
+    const curlDir = (hand === 'left') ? -1.0 : 1.0;
+    const spreadDir = (hand === 'left') ? -1.0 : 1.0; // 外側に開く方向
 
     if (pose === 'peace') {
-      // 人差し指・中指: 伸ばす (0)
-      setRot(`${prefix}IndexProximal`, 0, 0, 0);
+      // ピースサイン (Vサイン)
+
+      // 人差し指 (Index): 少し外側に開く
+      setRot(`${prefix}IndexProximal`, 0, spreadDir * 0.1, 0);
       setRot(`${prefix}IndexIntermediate`, 0, 0, 0);
       setRot(`${prefix}IndexDistal`, 0, 0, 0);
 
-      setRot(`${prefix}MiddleProximal`, 0, 0, 0);
+      // 中指 (Middle): 少し内側に閉じる? いや、V字にするなら逆か？
+      // 人差し指は親指側、中指は小指側に開くとVになる。
+      // Left Hand: Thumb is +Y? No, Thumb is inside. 
+      // If SpreadDir is "Outward", Index should go Inward?
+      // Let's try: Index -> Neutral, Middle -> Spread Out slightly.
+      setRot(`${prefix}MiddleProximal`, 0, spreadDir * -0.05, 0);
       setRot(`${prefix}MiddleIntermediate`, 0, 0, 0);
       setRot(`${prefix}MiddleDistal`, 0, 0, 0);
 
-      // 薬指・小指: 曲げる
-      const c = -Math.PI / 1.5; // 深く曲げる (Left: Negative, Right: Positive?)
-      // VRMの指曲げ軸: Z軸が多いが、Normalizedではリグによる
-      // 一般的にZ軸回転。
-      // 左手: -Zで曲がる? 右手: +Zで曲がる?
-
-      // Try Z rotation
-      setRot(`${prefix}RingProximal`, 0, 0, curl * 1.5);
-      setRot(`${prefix}RingIntermediate`, 0, 0, curl * 1.5);
-      setRot(`${prefix}LittleProximal`, 0, 0, curl * 1.5);
-      setRot(`${prefix}LittleIntermediate`, 0, 0, curl * 1.5);
-
-      // 親指: 曲げる
-      setRot(`${prefix}ThumbProximal`, 0, curl * 0.5, 0); // 親指は軸が違うかも
-      setRot(`${prefix}ThumbIntermediate`, 0, curl * 0.5, 0);
-    } else {
-      // Neutral: 軽く曲げる (自然に)
-      const c = curl * 0.2;
-      ['Index', 'Middle', 'Ring', 'Little'].forEach(finger => {
+      // 薬指・小指: 深く曲げる (Classic Peace)
+      const c = curlDir * 2.5; // Strong curl
+      ['Ring', 'Little'].forEach(finger => {
         setRot(`${prefix}${finger}Proximal`, 0, 0, c);
         setRot(`${prefix}${finger}Intermediate`, 0, 0, c);
+        setRot(`${prefix}${finger}Distal`, 0, 0, c);
       });
-      setRot(`${prefix}ThumbProximal`, 0, c, 0);
+
+      // 親指: 薬指の上に置く感じで曲げる
+      // 親指の軸は特殊だが、まずは内側に曲げる
+      setRot(`${prefix}ThumbProximal`, 0, curlDir * 0.5, 0);
+      setRot(`${prefix}ThumbIntermediate`, 0, curlDir * 0.5, 0);
+      setRot(`${prefix}ThumbDistal`, 0, curlDir * 0.5, 0);
+
+    } else {
+      // Neutral: 自然な「五本指」 (Natural Open Hand)
+      // 完全に平らではなく、わずかに曲げ、わずかに開く
+
+      // 親指 (Thumb): 少し内側に入れる
+      setRot(`${prefix}ThumbProximal`, 0, curlDir * 0.2, 0);
+      setRot(`${prefix}ThumbIntermediate`, 0, curlDir * 0.1, 0);
+
+      // 人差し指 (Index): ほぼ真っ直ぐだが、わずかに曲げる
+      setRot(`${prefix}IndexProximal`, 0, spreadDir * -0.05, curlDir * 0.1);
+      setRot(`${prefix}IndexIntermediate`, 0, 0, curlDir * 0.1);
+
+      // 中指 (Middle): 中心
+      setRot(`${prefix}MiddleProximal`, 0, 0, curlDir * 0.1);
+      setRot(`${prefix}MiddleIntermediate`, 0, 0, curlDir * 0.1);
+
+      // 薬指 (Ring): 少し外側に開きつつ、少し強く曲げる
+      setRot(`${prefix}RingProximal`, 0, spreadDir * 0.05, curlDir * 0.2);
+      setRot(`${prefix}RingIntermediate`, 0, 0, curlDir * 0.2);
+
+      // 小指 (Little): さらに外側に開き、さらに曲げる
+      setRot(`${prefix}LittleProximal`, 0, spreadDir * 0.1, curlDir * 0.3);
+      setRot(`${prefix}LittleIntermediate`, 0, 0, curlDir * 0.3);
     }
   }
 
