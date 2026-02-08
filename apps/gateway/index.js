@@ -137,6 +137,16 @@ faceUdpServer.on('message', (msg, rinfo) => {
     qz = -qz;
     // qw = qw;
 
+    // 6. Euler Angles (Optional, but we use Quaternions)
+    const ex = readFloat();
+    const ey = readFloat();
+    const ez = readFloat();
+
+    // 7. Translation (Face Position)
+    const tx = readFloat();
+    const ty = readFloat();
+    const tz = readFloat();
+
     // Quaternion → Euler変換
     const sinr_cosp = 2 * (qw * qx + qy * qz);
     const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
