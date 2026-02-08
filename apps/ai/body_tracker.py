@@ -181,19 +181,30 @@ class BodyTracker:
         
         if success:
             rmat, _ = cv2.Rodrigues(rot_vec)
-            angles, _, _, _, _, _ = cv2.RQDecompose(rmat)
+            # Manual Rotation Matrix to Euler Angles conversion
+            sy = np.sqrt(rmat[0,0] * rmat[0,0] + rmat[1,0] * rmat[1,0])
+            singular = sy < 1e-6
+            if not singular:
+                x = np.arctan2(rmat[2,1], rmat[2,2])
+                y = np.arctan2(-rmat[2,0], sy)
+                z = np.arctan2(rmat[1,0], rmat[0,0])
+            else:
+                x = np.arctan2(-rmat[1,2], rmat[1,1])
+                y = np.arctan2(-rmat[2,0], sy)
+                z = 0
             
-            pitch = angles[0]
-            yaw = angles[1]
-            roll = angles[2]
+            # Convert to degrees for easier debugging and likely receiver expectation
+            pitch = x * (180.0 / np.pi)
+            yaw = y * (180.0 / np.pi)
+            roll = z * (180.0 / np.pi)
             
             self.osc_client.send_message("/face/rotation", [float(pitch), float(yaw), float(roll)])
             print(f"[DEBUG] Face Rot: P={pitch:.2f}, Y={yaw:.2f}, R={roll:.2f}")
 
         # Reset Face expression for safety
         self.osc_client.send_message("/face/blink", 0.0)
-        self.osc_client.send_message("/face/mouth", 0.0, 0.0)
-        self.osc_client.send_message("/face/eye", 0.0, 0.0)
+        self.osc_client.send_message("/face/mouth", [0.0, 0.0])
+        self.osc_client.send_message("/face/eye", [0.0, 0.0])
 
     # ---------------------------------------------------------
     # ERROR HANDLING UNCOMMENTED
