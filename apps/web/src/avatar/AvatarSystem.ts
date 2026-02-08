@@ -283,6 +283,8 @@ export class AvatarSystem {
       this.currentExpression.mouthOpen
     );
     proxy.setValue('aa', mouthValue);
+    proxy.setValue('ih', mouthValue * 0.3); // 補助的に他の母音も入れる
+    proxy.setValue('ou', mouthValue * 0.3);
 
     // 視線の適用
     if (this.vrm.lookAt) {
@@ -293,26 +295,26 @@ export class AvatarSystem {
       ));
     }
 
-    // 頭部回転 (Degrees -> Radians変換 & 補正)
+    // 頭部回転 (Degrees -> Radians変換    // 頭部回転 (Degrees -> Radians変換 & 補正)
     if (data.headRotation) {
       const head = this.vrm.humanoid?.getRawBoneNode('head');
       if (head) {
-        // 顔認識の座標系とVRMの座標系の整合
-        // Unity(OpenSeeFace): Y=Up, X=Right, Z=Forward (Left-handed?)
-        // Three.js: Y=Up, X=Right, Z=Back (Right-handed)
-        // さらに、度数法(Degree)で来るのでラジアン(Radian)に変換必須
+        // 顔が横に90度なる -> Z軸(Roll)にY軸(Yaw)の値が入っている可能性など
+        // OpenSeeFace: X=Pitch, Y=Yaw, Z=Roll
+        // Three.js: X=Pitch, Y=Yaw, Z=Roll (ただし回転順序で荒ぶる)
 
         const pitch = THREE.MathUtils.degToRad(data.headRotation.x);
         const yaw = THREE.MathUtils.degToRad(data.headRotation.y);
         const roll = THREE.MathUtils.degToRad(data.headRotation.z);
 
-        // 座標変換 (試行錯誤が必要な部分だが、まずは標準的な変換)
-        // 鏡像反転なども考慮
-        head.rotation.set(
-          -pitch,  // 上下 (符号反転してみる)
-          -yaw,    // 左右
-          roll     // 傾き
-        );
+        // クオータニオンで回転を作成（ジンバルロック回避）
+        const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -pitch);
+        const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw);
+        const qRoll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll);
+
+        // 回転を合成 (順序: Yaw -> Pitch -> Roll)
+        const q = new THREE.Quaternion().copy(qYaw).multiply(qPitch).multiply(qRoll);
+        head.quaternion.copy(q);
       }
     }
   }
@@ -372,172 +374,51 @@ export class AvatarSystem {
     const humanoid = this.vrm.humanoid;
     if (!humanoid) return;
 
-    // 非常にシンプルなアプローチ: MediaPipeの生座標を直接使う
     // MediaPipe: x(0-1 左→右), y(0-1 上→下), z(0-1 奥→手前)
 
-    // 肩の回転(腕の動き)
+    // 肩の回転(腕の動き) - 修正版: Y軸差分はZ回転(上げ下げ)に割り当てるべき
     if (body.shoulder && body.elbow) {
-      // 左肩
+      // 左肩 (LeftUpperArm)
       if (body.shoulder.left && body.elbow.left) {
         const s = body.shoulder.left;
         const e = body.elbow.left;
         const bone = humanoid.getRawBoneNode('leftUpperArm' as any);
         if (bone) {
-          // 腕を下げた状態を基準(0,0,0)として、そこからの変化を適用
-          const dy = (e.y - s.y) * 3;  // 上下: 大きい=下、小さい=上
-          const dx = (e.x - s.x) * 3;  // 左右: 大きい=右、小さい=左
-          const dz = (e.z - s.z) * 2;  // 前後: 大きい=手前、小さい=奥
+          // 上下(Y差分) -> Z回転 (下げる=マイナス? VRMによる)
+          // 左右(X差分) -> Y回転 (前後?)
+          // 前後(Z差分) -> X回転?
 
-          bone.rotation.x = dy;      // 腕を上下に動かす
-          bone.rotation.y = -dz;     // 腕を前後に動かす(Y軸回転)
-          bone.rotation.z = -dx;     // 腕を左右に動かす
-          bone.updateMatrix();
+          // VRM標準: Tポーズ(腕はX軸)。Z回転で腕が上下する (Z正=前? Z負=後ろ?)
+          // 一般的なリグ: Z回転で腕が下がる (約-60度～-80度でAポーズ)
+
+          const dy = e.y - s.y; // 下に行くとプラス
+          const dx = e.x - s.x; // 右に行くとプラス
+
+          // 腕を下げる: dyがプラスのとき。Z回転をマイナスにする
+          const rotZ = -(dy * 2.5);
+          // 腕を前に出す: dxはどうなる？ (一旦無視またはY回転)
+
+          // 基本姿勢(Aポーズ)からのオフセットとして適用
+          bone.rotation.set(0, 0, rotZ + 0.2); // 0.2は補正
         }
       }
 
-      // 右肩
+      // 右肩 (RightUpperArm)
       if (body.shoulder.right && body.elbow.right) {
         const s = body.shoulder.right;
         const e = body.elbow.right;
         const bone = humanoid.getRawBoneNode('rightUpperArm' as any);
         if (bone) {
-          const dy = (e.y - s.y) * 3;
-          const dx = (e.x - s.x) * 3;
-          const dz = (e.z - s.z) * 2;
+          const dy = e.y - s.y;
 
-          bone.rotation.x = dy;
-          bone.rotation.y = -dz;
-          bone.rotation.z = -dx;
-          bone.updateMatrix();
+          // 右腕: 腕を下げる -> Z回転をプラスにする
+          const rotZ = (dy * 2.5);
+
+          bone.rotation.set(0, 0, rotZ - 0.2);
         }
       }
     }
 
-    // 肘の回転(前腕の動き)
-    if (body.elbow && body.wrist) {
-      // 左肘
-      if (body.elbow.left && body.wrist.left) {
-        const e = body.elbow.left;
-        const w = body.wrist.left;
-        const bone = humanoid.getRawBoneNode('leftLowerArm' as any);
-        if (bone) {
-          const dy = (w.y - e.y) * 2;
-          const dx = (w.x - e.x) * 2;
-          const dz = (w.z - e.z) * 1.5;
-
-          bone.rotation.x = dy;
-          bone.rotation.y = -dz;
-          bone.rotation.z = -dx;
-          bone.updateMatrix();
-        }
-      }
-
-      // 右肘
-      if (body.elbow.right && body.wrist.right) {
-        const e = body.elbow.right;
-        const w = body.wrist.right;
-        const bone = humanoid.getRawBoneNode('rightLowerArm' as any);
-        if (bone) {
-          const dy = (w.y - e.y) * 2;
-          const dx = (w.x - e.x) * 2;
-          const dz = (w.z - e.z) * 1.5;
-
-          bone.rotation.x = dy;
-          bone.rotation.y = -dz;
-          bone.rotation.z = -dx;
-          bone.updateMatrix();
-        }
-      }
-    }
-
-    // 手首の回転(手の動き)
-    if (body.wrist) {
-      // 左手首
-      if (body.wrist.left) {
-        const w = body.wrist.left;
-        const handBone = humanoid.getRawBoneNode('leftHand' as any);
-        if (handBone) {
-          // 手首の傾きを適用(簡易版)
-          handBone.rotation.x = (w.y - 0.5) * 0.5;  // 上下の傾き
-          handBone.rotation.z = -(w.x - 0.5) * 0.5; // 左右の傾き
-          handBone.updateMatrix();
-        }
-      }
-
-      // 右手首
-      if (body.wrist.right) {
-        const w = body.wrist.right;
-        const handBone = humanoid.getRawBoneNode('rightHand' as any);
-        if (handBone) {
-          handBone.rotation.x = (w.y - 0.5) * 0.5;
-          handBone.rotation.z = -(w.x - 0.5) * 0.5;
-          handBone.updateMatrix();
-        }
-      }
-    }
-
-    // 股関節の回転(足の動き)
-    if (body.hip && body.knee) {
-      // 左股関節
-      if (body.hip.left && body.knee.left) {
-        const h = body.hip.left;
-        const k = body.knee.left;
-        const bone = humanoid.getRawBoneNode('leftUpperLeg' as any);
-        if (bone) {
-          const dy = (k.y - h.y) * 2;
-          const dx = (k.x - h.x) * 2;
-
-          bone.rotation.x = dy - 1.5; // 立ち姿勢を基準に調整
-          bone.rotation.z = -dx;
-          bone.updateMatrix();
-        }
-      }
-
-      // 右股関節
-      if (body.hip.right && body.knee.right) {
-        const h = body.hip.right;
-        const k = body.knee.right;
-        const bone = humanoid.getRawBoneNode('rightUpperLeg' as any);
-        if (bone) {
-          const dy = (k.y - h.y) * 2;
-          const dx = (k.x - h.x) * 2;
-
-          bone.rotation.x = dy - 1.5;
-          bone.rotation.z = -dx;
-          bone.updateMatrix();
-        }
-      }
-    }
-
-    // 膝の回転(すねの動き)
-    if (body.knee && body.ankle) {
-      // 左膝
-      if (body.knee.left && body.ankle.left) {
-        const k = body.knee.left;
-        const a = body.ankle.left;
-        const bone = humanoid.getRawBoneNode('leftLowerLeg' as any);
-        if (bone) {
-          const dy = (a.y - k.y) * 2;
-
-          // 膝は基本的に前方にしか曲がらない
-          bone.rotation.x = Math.max(0, dy - 1.0);
-          bone.updateMatrix();
-        }
-      }
-
-      // 右膝
-      if (body.knee.right && body.ankle.right) {
-        const k = body.knee.right;
-        const a = body.ankle.right;
-        const bone = humanoid.getRawBoneNode('rightLowerLeg' as any);
-        if (bone) {
-          const dy = (a.y - k.y) * 2;
-
-          bone.rotation.x = Math.max(0, dy - 1.0);
-          bone.updateMatrix();
-        }
-      }
-    }
   }
 
   /**
