@@ -28,6 +28,7 @@ export class AvatarSystem {
   private isBlinking = false;
   private blinkStartTime = 0;
   private hasBodyTracking = false; // ボディトラッキング有効フラグ
+  private lastBodyTrackingTime = 0; // 最終トラッキング時刻
 
   // 表情状態（スムージング用）
   private currentExpression = {
@@ -247,6 +248,7 @@ export class AvatarSystem {
     // 体のトラッキング適用（最優先）
     if (data.body) {
       this.hasBodyTracking = true;
+      this.lastBodyTrackingTime = Date.now();
       this.applyBodyTracking(data.body);
       // return; // ボディトラッキング時も顔のトラッキングを適用する (頭の回転など)
     }
@@ -294,10 +296,21 @@ export class AvatarSystem {
     if (data.headRotation) {
       const head = this.vrm.humanoid?.getRawBoneNode('head');
       if (head) {
+        // 顔認識の座標系とVRMの座標系の整合
+        // Unity(OpenSeeFace): Y=Up, X=Right, Z=Forward (Left-handed?)
+        // Three.js: Y=Up, X=Right, Z=Back (Right-handed)
+        // さらに、度数法(Degree)で来るのでラジアン(Radian)に変換必須
+
+        const pitch = THREE.MathUtils.degToRad(data.headRotation.x);
+        const yaw = THREE.MathUtils.degToRad(data.headRotation.y);
+        const roll = THREE.MathUtils.degToRad(data.headRotation.z);
+
+        // 座標変換 (試行錯誤が必要な部分だが、まずは標準的な変換)
+        // 鏡像反転なども考慮
         head.rotation.set(
-          data.headRotation.x * 0.7, // ピッチ
-          data.headRotation.y * 0.7, // ヨー
-          data.headRotation.z * 0.5  // ロール
+          -pitch,  // 上下 (符号反転してみる)
+          -yaw,    // 左右
+          roll     // 傾き
         );
       }
     }
@@ -526,6 +539,24 @@ export class AvatarSystem {
     }
   }
 
+  /**
+   * ボディトラッキングがない時の待機ポーズ（Tポーズ回避）
+   */
+  private resetToIdlePose() {
+    if (!this.vrm || !this.vrm.humanoid) return;
+
+    // 腕を自然に下ろす (Aポーズ)
+    const leftArm = this.vrm.humanoid.getRawBoneNode('leftUpperArm');
+    const rightArm = this.vrm.humanoid.getRawBoneNode('rightUpperArm');
+
+    if (leftArm) {
+      leftArm.rotation.set(0, 0, Math.PI / 3); // 60度おろす
+    }
+    if (rightArm) {
+      rightArm.rotation.set(0, 0, -Math.PI / 3); // 60度おろす
+    }
+  }
+
   private updateIdleAnimation(deltaTime: number) {
     if (this.useProceduralAvatar) {
       // プロシージャルアバターは独自のアイドルアニメーション持ってる
@@ -535,6 +566,16 @@ export class AvatarSystem {
     if (!this.vrm) return;
 
     this.idleTime += deltaTime;
+
+    // ボディトラッキングのタイムアウト判定 (1秒データが来なければアイドルへ)
+    if (this.hasBodyTracking && Date.now() - this.lastBodyTrackingTime > 1000) {
+      this.hasBodyTracking = false;
+    }
+
+    // ボディトラッキングがない場合は、腕を下ろす
+    if (!this.hasBodyTracking) {
+      this.resetToIdlePose();
+    }
 
     // 呼吸アニメーション
     const breathCycle = CONFIG.avatar.idle.breathingCycle;
@@ -552,19 +593,8 @@ export class AvatarSystem {
     const swayValue = Math.sin(swayPhase) * CONFIG.avatar.idle.swayAmplitude;
 
     if (this.vrm.scene) {
-      // Y軸0度(回転なし)を試す
-      this.vrm.scene.rotation.set(0, 0, swayValue);
-
-      // デバッグ: 1回だけログ出力
-      if (!this.rotationLogged) {
-        console.log('🔄 update()での回転:', {
-          x: this.vrm.scene.rotation.x,
-          y: this.vrm.scene.rotation.y,
-          z: this.vrm.scene.rotation.z,
-          yDegrees: (this.vrm.scene.rotation.y * 180 / Math.PI).toFixed(1) + '度'
-        });
-        this.rotationLogged = true;
-      }
+      // 180度回転して正面を向かせる (Math.PI) + 揺れ
+      this.vrm.scene.rotation.set(0, Math.PI, swayValue);
     }
   }
 
