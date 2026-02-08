@@ -55,7 +55,7 @@ class BodyTracker:
             (150.0, -150.0, -125.0)      # Right Mouth Corner
         ], dtype=np.float64)
         
-        print("✅ HolisticTracker initialized")
+        print("[OK] HolisticTracker initialized")
     
     def start(self):
         """Start camera and tracking. Silently retry multiple IDs."""
@@ -71,7 +71,7 @@ class BodyTracker:
                 # Test read
                 ret, frame = self.cap.read()
                 if ret:
-                    print(f"✅ Camera opened successfully (ID: {cam_id})")
+                    print(f"[OK] Camera opened successfully (ID: {cam_id})")
                     self.running = True
                     self.thread = threading.Thread(target=self._tracking_loop, daemon=True)
                     self.thread.start()
@@ -92,7 +92,7 @@ class BodyTracker:
             self.thread.join(timeout=2.0)
         if self.cap:
             self.cap.release()
-        print("🛑 Camera stopped")
+        print("[STOP] Camera stopped")
     
     def _tracking_loop(self):
         """Main tracking loop"""

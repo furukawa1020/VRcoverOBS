@@ -30,7 +30,7 @@ try:
     WHISPER_AVAILABLE = True
 except ImportError:
     WHISPER_AVAILABLE = False
-    print("⚠️ Whisperがインストールされていません（pip install openai-whisper）")
+    print("[WARN] Whisper is not installed (pip install openai-whisper)")
 
 # Ollama API
 import requests
@@ -43,7 +43,7 @@ try:
     TTS_AVAILABLE = True
 except ImportError:
     TTS_AVAILABLE = False
-    print("⚠️ gTTSがインストールされていません（pip install gtts）")
+    print("[WARN] gTTS is not installed (pip install gtts)")
 
 app = Flask(__name__)
 CORS(app)
@@ -365,13 +365,13 @@ if __name__ == '__main__':
         # ユーザー要望により有効化: カメラ競合に注意
         body_tracker = BodyTracker()
         if body_tracker.start():
-             print("✅ Body Tracking 起動完了")
+             print("[OK] Body Tracking started")
         else:
-             print("⚠️ Body Tracking 起動失敗 (カメラ接続エラーの可能性)")
+             print("[WARN] Body Tracking start failed (Camera busy?)")
              body_tracker = None
 
     except Exception as e:
-        print(f"⚠️ Body Tracking エラー: {e}")
+        print(f"[ERROR] Body Tracking Error: {e}")
         body_tracker = None
 
     except Exception as e:
