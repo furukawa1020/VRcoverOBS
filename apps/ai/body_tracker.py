@@ -123,11 +123,14 @@ class BodyTracker:
                 # print(f"[ERROR] Tracking error: {e}")
                 pass
             
-            # FPS and debug log
-            current_time = time.time()
-            if current_time - fps_time >= 3.0:
-                print(f"[DEBUG] Tick... (Camera ID: {cam_id}, Pose: {'Found' if pose_result and pose_result.pose_landmarks else 'None'})")
-                fps_time = current_time
+            # Real-time logging (User Request: "Coordinates flowing")
+            if pose_result and pose_result.pose_landmarks:
+                lm = pose_result.pose_landmarks[0]
+                nose = lm[0]
+                wrist_l = lm[15]
+                print(f"[KEYPOINTS] Nose: ({nose.x:.3f}, {nose.y:.3f}) | L_Wrist: ({wrist_l.x:.3f}, {wrist_l.y:.3f}) | Sending...")
+            else:
+                print("[STATUS] Searching for body...")
             
             # CPU performance control
             time.sleep(0.01)

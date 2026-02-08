@@ -214,7 +214,13 @@ faceUdpServer.on('message', (msg, rinfo) => {
 
 
 // MediaPipe OSCメッセージハンドラ
+let oscPacketCount = 0;
 oscServerBody.on('message', (oscMsg) => {
+  oscPacketCount++;
+  if (oscPacketCount % 60 === 0) {
+    console.log(`📨 OSC Body Data: ${oscPacketCount} packets received`);
+  }
+
   // /body/shoulder/left/position x y z
   // /face/rotation x y z
   // /face/blendshapes ...
@@ -227,7 +233,7 @@ oscServerBody.on('message', (oscMsg) => {
     // parts: ['', 'body', ...] or ['', 'face', ...]
 
     // Body Data
-    if (parts.length >= 5 && parts[1] === 'body') {
+    if (parts.length >= 4 && parts[1] === 'body') {
       const part = parts[2]; // shoulder
       const side = parts[3]; // left
 
