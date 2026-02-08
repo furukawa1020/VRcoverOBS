@@ -129,13 +129,9 @@ export class AvatarSystem {
       console.log('HDRI environment map loaded');
     } catch (error) {
       console.warn('⚠️ HDRI読み込み失敗、デフォルト環境を使用:', error);
-      // フォールバック：シンプルな環境キューブ
-      const cubeTextureLoader = new THREE.CubeTextureLoader();
-      this.scene.environment = cubeTextureLoader.load([
-        '/fallback/px.png', '/fallback/nx.png',
-        '/fallback/py.png', '/fallback/ny.png',
-        '/fallback/pz.png', '/fallback/nz.png',
-      ]);
+      // フォールバック：シンプルな背景色
+      this.scene.background = new THREE.Color(0x333333);
+      this.scene.environment = null;
     }
   }
 
