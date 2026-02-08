@@ -7,6 +7,8 @@ import { CONFIG, THEME } from '../config';
 import type { AvatarSystem } from '../avatar/AvatarSystem';
 import type { AudioProcessor } from '../audio/AudioProcessor';
 import type { TrackingClient } from '../tracking/TrackingClient';
+import { CanvasStreamer } from '../utils/CanvasStreamer';
+
 
 interface UIOptions {
   avatarSystem: AvatarSystem;
@@ -17,10 +19,13 @@ interface UIOptions {
 export class UI {
   private container: HTMLElement | null = null;
   private options: UIOptions;
-  
+
   // 状態
   private isAIEnabled = false;
+  private isAIEnabled = false;
   private isVoiceChangerEnabled = false;
+  private canvasStreamer: CanvasStreamer | null = null;
+
 
   constructor(options: UIOptions) {
     this.options = options;
@@ -29,9 +34,16 @@ export class UI {
   init() {
     this.createContainer();
     this.createControls();
+    this.initCanvasStreamer();
     this.attachEventListeners();
     console.log('✅ UI 初期化完了');
   }
+
+  private initCanvasStreamer() {
+    const canvas = this.options.avatarSystem.getDomElement();
+    this.canvasStreamer = new CanvasStreamer(canvas, CONFIG.ai.streamUrl, 30);
+  }
+
 
   private createContainer() {
     this.container = document.createElement('div');
@@ -80,7 +92,20 @@ export class UI {
         <button id="voice-toggle" class="ui-toggle" data-enabled="false">
           <span class="toggle-text">オフ</span>
         </button>
+      <div class="ui-section" style="margin-bottom: 15px;">
+        <label class="ui-label">ボイスチェンジャー</label>
+        <button id="voice-toggle" class="ui-toggle" data-enabled="false">
+          <span class="toggle-text">オフ</span>
+        </button>
       </div>
+
+      <div class="ui-section" style="margin-bottom: 15px;">
+        <label class="ui-label">仮想カメラ (Direct)</label>
+        <button id="vcam-toggle" class="ui-toggle" data-enabled="false">
+          <span class="toggle-text">オフ 📷</span>
+        </button>
+      </div>
+
 
       <div class="ui-section" style="margin-bottom: 15px;">
         <label class="ui-label">音声入力</label>
@@ -232,9 +257,9 @@ export class UI {
     aiToggle?.addEventListener('click', () => {
       this.isAIEnabled = !this.isAIEnabled;
       aiToggle.setAttribute('data-enabled', String(this.isAIEnabled));
-      aiToggle.querySelector('.toggle-text')!.textContent = 
+      aiToggle.querySelector('.toggle-text')!.textContent =
         this.isAIEnabled ? 'AIモード 🤖' : '手動モード';
-      
+
       console.log(`AI人格: ${this.isAIEnabled ? 'ON' : 'OFF'}`);
       // TODO: AI サービスとの連携
     });
@@ -244,13 +269,31 @@ export class UI {
     voiceToggle?.addEventListener('click', () => {
       this.isVoiceChangerEnabled = !this.isVoiceChangerEnabled;
       voiceToggle.setAttribute('data-enabled', String(this.isVoiceChangerEnabled));
-      voiceToggle.querySelector('.toggle-text')!.textContent = 
+      voiceToggle.querySelector('.toggle-text')!.textContent =
         this.isVoiceChangerEnabled ? 'オン 🎤' : 'オフ';
-      
+
+      this.options.audioProcessor.enableVoiceChanger(this.isVoiceChangerEnabled);
       this.options.audioProcessor.enableVoiceChanger(this.isVoiceChangerEnabled);
     });
 
+    // 仮想カメラトグル
+    const vcamToggle = document.getElementById('vcam-toggle');
+    vcamToggle?.addEventListener('click', () => {
+      if (!this.canvasStreamer) return;
+
+      if (this.canvasStreamer.isActive) {
+        this.canvasStreamer.stop();
+        vcamToggle.setAttribute('data-enabled', 'false');
+        vcamToggle.querySelector('.toggle-text')!.textContent = 'オフ 📷';
+      } else {
+        this.canvasStreamer.start();
+        vcamToggle.setAttribute('data-enabled', 'true');
+        vcamToggle.querySelector('.toggle-text')!.textContent = 'オン (配信中) 🔴';
+      }
+    });
+
     // 音声入力ボタン
+
     const voiceInputBtn = document.getElementById('voice-input-btn');
     const voiceStatus = document.getElementById('voice-status');
     let isRecording = false;
@@ -335,9 +378,9 @@ export class UI {
       Object.entries(values).forEach(([name, value]) => {
         this.options.avatarSystem.setExpression(name, value);
       });
-      
+
       console.log(`表情適用: ${expression}`);
-      
+
       // 2秒後に表情をリセット
       setTimeout(() => {
         Object.keys(values).forEach((name) => {
@@ -362,7 +405,7 @@ export class UI {
 
       // AIサービスに送信
       if (voiceStatus) voiceStatus.textContent = 'AI処理中...';
-      
+
       const response = await fetch('http://localhost:5000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -373,10 +416,10 @@ export class UI {
       });
 
       const result = await response.json();
-      
+
       if (result.response) {
         if (voiceStatus) voiceStatus.textContent = `応答: ${result.response}`;
-        
+
         // 音声を再生
         if (result.audio) {
           const audioData = atob(result.audio);
@@ -388,7 +431,7 @@ export class UI {
           const audioUrl = URL.createObjectURL(audioBlob);
           const audio = new Audio(audioUrl);
           audio.play();
-          
+
           // 再生終了後にステータスをクリア
           audio.onended = () => {
             if (voiceStatus) voiceStatus.textContent = '';

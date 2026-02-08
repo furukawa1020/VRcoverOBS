@@ -140,6 +140,8 @@ export const CONFIG = {
   ai: {
     enabled: false, // UI から切替
     serviceUrl: 'http://localhost:5000',
+    streamUrl: 'ws://localhost:5000/stream',
+
     
     // STT (Speech-to-Text)
     stt: {

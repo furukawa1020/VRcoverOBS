@@ -18,7 +18,7 @@ export class AvatarSystem {
   private proceduralAvatar: ProceduralAvatar | null = null;
   private useProceduralAvatar = false;
   private clock = new THREE.Clock();
-  
+
   // アニメーション状態
   private idleTime = 0;
   private blinkTime = 0;
@@ -27,7 +27,7 @@ export class AvatarSystem {
   private isBlinking = false;
   private blinkStartTime = 0;
   private hasBodyTracking = false; // ボディトラッキング有効フラグ
-  
+
   // 表情状態（スムージング用）
   private currentExpression = {
     blink: 0,
@@ -47,7 +47,7 @@ export class AvatarSystem {
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 20);
     // 前方から見る(通常位置)
-    this.camera.position.set(0, 0.8, 2.0);  
+    this.camera.position.set(0, 0.8, 2.0);
     this.camera.lookAt(0, 0.7, 0); // アバターの顔を見る
 
     // レンダラーの初期化（PBR設定）
@@ -55,7 +55,7 @@ export class AvatarSystem {
       antialias: CONFIG.avatar.rendering.antialias,
       alpha: CONFIG.avatar.rendering.alpha,
     });
-    
+
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(CONFIG.avatar.rendering.pixelRatio);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Three.js r152以降
@@ -63,7 +63,7 @@ export class AvatarSystem {
     this.renderer.toneMappingExposure = CONFIG.avatar.rendering.toneMappingExposure;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    
+
     container.appendChild(this.renderer.domElement);
 
     // ライティングのセットアップ
@@ -138,7 +138,7 @@ export class AvatarSystem {
         this.scene.remove(this.vrm.scene);
         VRMUtils.deepDispose(this.vrm.scene);
       }
-      
+
       // プロシージャルアバターを削除
       if (this.proceduralAvatar) {
         this.scene.remove(this.proceduralAvatar.group);
@@ -158,7 +158,7 @@ export class AvatarSystem {
         CONFIG.avatar.position.z
       );
       vrm.scene.scale.setScalar(CONFIG.avatar.scale);
-      
+
       // 回転はVRoidAvatar.tsで管理
       console.log('✅ VRMモデル配置完了');
 
@@ -174,13 +174,13 @@ export class AvatarSystem {
     } catch (error) {
       console.error('❌ VRM読み込みエラー:', error);
       console.log('🎨 プロシージャルアバターにフォールバック');
-      
+
       // VRMが読み込めない場合、プロシージャルアバターを生成
       this.loadProceduralAvatar();
       throw error;
     }
   }
-  
+
   /**
    * プロシージャルアバターを生成（VRMの代わり）
    */
@@ -190,13 +190,13 @@ export class AvatarSystem {
     console.log('   - 髪: 3000本以上 + 雪の結晶 + うぐいす髪飾り');
     console.log('   - 体: 骨格、筋肉、指紋、手相 + 肩乗りうぐいす');
     console.log('   - 服: 布の織り目、ボタン、レース');
-    
+
     // 既存のVRMを削除
     if (this.vrm) {
       this.scene.remove(this.vrm.scene);
       this.vrm = null;
     }
-    
+
     // プロシージャルアバターを生成
     this.proceduralAvatar = new ProceduralAvatar({
       position: new THREE.Vector3(
@@ -206,10 +206,10 @@ export class AvatarSystem {
       ),
       scale: CONFIG.avatar.scale,
     });
-    
+
     this.useProceduralAvatar = true;
     this.scene.add(this.proceduralAvatar.group);
-    
+
     console.log('✅ プロシージャルアバター生成完了！');
   }
 
@@ -219,7 +219,7 @@ export class AvatarSystem {
       this.updateProceduralFromTracking(data);
       return;
     }
-    
+
     if (!this.vrm) return;
 
     // 体のトラッキング適用（最優先）
@@ -234,19 +234,19 @@ export class AvatarSystem {
 
     // 表情のスムージング（EMA）
     const smooth = CONFIG.avatar.expression.smoothingFactor;
-    
+
     this.currentExpression.mouthOpen = this.ema(
       this.currentExpression.mouthOpen,
       data.mouthOpen,
       smooth
     );
-    
+
     this.currentExpression.eyeX = this.ema(
       this.currentExpression.eyeX,
       data.eyeX,
       CONFIG.avatar.lookAt.smoothingFactor
     );
-    
+
     this.currentExpression.eyeY = this.ema(
       this.currentExpression.eyeY,
       data.eyeY,
@@ -258,7 +258,7 @@ export class AvatarSystem {
       this.currentExpression.mouthOpen
     );
     proxy.setValue('aa', mouthValue);
-    
+
     // 視線の適用
     if (this.vrm.lookAt) {
       this.vrm.lookAt.lookAt(new THREE.Vector3(
@@ -280,36 +280,36 @@ export class AvatarSystem {
       }
     }
   }
-  
+
   /**
    * プロシージャルアバター用のトラッキング更新
    */
   private updateProceduralFromTracking(data: TrackingData) {
     if (!this.proceduralAvatar) return;
-    
+
     // 表情のスムージング
     const smoothing = 0.3;
-    
-    this.currentExpression.blink = 
+
+    this.currentExpression.blink =
       this.currentExpression.blink * (1 - smoothing) + data.blink * smoothing;
-    this.currentExpression.mouthOpen = 
+    this.currentExpression.mouthOpen =
       this.currentExpression.mouthOpen * (1 - smoothing) + data.mouthOpen * smoothing;
-    this.currentExpression.mouthSmile = 
+    this.currentExpression.mouthSmile =
       this.currentExpression.mouthSmile * (1 - smoothing) + data.mouthSmile * smoothing;
-    
+
     // リップシンク
     this.proceduralAvatar.setMouthOpen(this.currentExpression.mouthOpen);
-    
+
     // 表情
     if (this.currentExpression.mouthSmile > 0.3) {
       this.proceduralAvatar.setExpression('happy', this.currentExpression.mouthSmile);
     }
-    
+
     // 視線
     this.proceduralAvatar.setEyeDirection(
       new THREE.Vector3(data.eyeX, data.eyeY, -1)
     );
-    
+
     // 頭部回転
     if (data.headRotation) {
       const euler = new THREE.Euler(
@@ -319,7 +319,7 @@ export class AvatarSystem {
       );
       this.proceduralAvatar.setHeadRotation(euler);
     }
-    
+
     // 🦴 全身トラッキング (体データがあれば適用)
     if ((data as any).body) {
       this.proceduralAvatar.applyFullBodyTracking((data as any).body);
@@ -338,7 +338,7 @@ export class AvatarSystem {
 
     // 非常にシンプルなアプローチ: MediaPipeの生座標を直接使う
     // MediaPipe: x(0-1 左→右), y(0-1 上→下), z(0-1 奥→手前)
-    
+
     // 肩の回転(腕の動き)
     if (body.shoulder && body.elbow) {
       // 左肩
@@ -351,14 +351,14 @@ export class AvatarSystem {
           const dy = (e.y - s.y) * 3;  // 上下: 大きい=下、小さい=上
           const dx = (e.x - s.x) * 3;  // 左右: 大きい=右、小さい=左
           const dz = (e.z - s.z) * 2;  // 前後: 大きい=手前、小さい=奥
-          
+
           bone.rotation.x = dy;      // 腕を上下に動かす
           bone.rotation.y = -dz;     // 腕を前後に動かす(Y軸回転)
           bone.rotation.z = -dx;     // 腕を左右に動かす
           bone.updateMatrix();
         }
       }
-      
+
       // 右肩
       if (body.shoulder.right && body.elbow.right) {
         const s = body.shoulder.right;
@@ -368,7 +368,7 @@ export class AvatarSystem {
           const dy = (e.y - s.y) * 3;
           const dx = (e.x - s.x) * 3;
           const dz = (e.z - s.z) * 2;
-          
+
           bone.rotation.x = dy;
           bone.rotation.y = -dz;
           bone.rotation.z = -dx;
@@ -388,14 +388,14 @@ export class AvatarSystem {
           const dy = (w.y - e.y) * 2;
           const dx = (w.x - e.x) * 2;
           const dz = (w.z - e.z) * 1.5;
-          
+
           bone.rotation.x = dy;
           bone.rotation.y = -dz;
           bone.rotation.z = -dx;
           bone.updateMatrix();
         }
       }
-      
+
       // 右肘
       if (body.elbow.right && body.wrist.right) {
         const e = body.elbow.right;
@@ -405,7 +405,7 @@ export class AvatarSystem {
           const dy = (w.y - e.y) * 2;
           const dx = (w.x - e.x) * 2;
           const dz = (w.z - e.z) * 1.5;
-          
+
           bone.rotation.x = dy;
           bone.rotation.y = -dz;
           bone.rotation.z = -dx;
@@ -427,7 +427,7 @@ export class AvatarSystem {
           handBone.updateMatrix();
         }
       }
-      
+
       // 右手首
       if (body.wrist.right) {
         const w = body.wrist.right;
@@ -450,13 +450,13 @@ export class AvatarSystem {
         if (bone) {
           const dy = (k.y - h.y) * 2;
           const dx = (k.x - h.x) * 2;
-          
+
           bone.rotation.x = dy - 1.5; // 立ち姿勢を基準に調整
           bone.rotation.z = -dx;
           bone.updateMatrix();
         }
       }
-      
+
       // 右股関節
       if (body.hip.right && body.knee.right) {
         const h = body.hip.right;
@@ -465,7 +465,7 @@ export class AvatarSystem {
         if (bone) {
           const dy = (k.y - h.y) * 2;
           const dx = (k.x - h.x) * 2;
-          
+
           bone.rotation.x = dy - 1.5;
           bone.rotation.z = -dx;
           bone.updateMatrix();
@@ -482,13 +482,13 @@ export class AvatarSystem {
         const bone = humanoid.getRawBoneNode('leftLowerLeg' as any);
         if (bone) {
           const dy = (a.y - k.y) * 2;
-          
+
           // 膝は基本的に前方にしか曲がらない
           bone.rotation.x = Math.max(0, dy - 1.0);
           bone.updateMatrix();
         }
       }
-      
+
       // 右膝
       if (body.knee.right && body.ankle.right) {
         const k = body.knee.right;
@@ -496,7 +496,7 @@ export class AvatarSystem {
         const bone = humanoid.getRawBoneNode('rightLowerLeg' as any);
         if (bone) {
           const dy = (a.y - k.y) * 2;
-          
+
           bone.rotation.x = Math.max(0, dy - 1.0);
           bone.updateMatrix();
         }
@@ -509,7 +509,7 @@ export class AvatarSystem {
       // プロシージャルアバターは独自のアイドルアニメーション持ってる
       return;
     }
-    
+
     if (!this.vrm) return;
 
     this.idleTime += deltaTime;
@@ -517,8 +517,8 @@ export class AvatarSystem {
     // 呼吸アニメーション
     const breathCycle = CONFIG.avatar.idle.breathingCycle;
     const breathPhase = (this.idleTime % breathCycle) / breathCycle;
-    const breathValue = Math.sin(breathPhase * Math.PI * 2) * 
-                        CONFIG.avatar.idle.breathingAmplitude;
+    const breathValue = Math.sin(breathPhase * Math.PI * 2) *
+      CONFIG.avatar.idle.breathingAmplitude;
 
     const chest = this.vrm.humanoid?.getRawBoneNode('chest');
     if (chest) {
@@ -528,11 +528,11 @@ export class AvatarSystem {
     // わずかな揺れ(川の流れのイメージ)
     const swayPhase = (this.idleTime * 0.3) % (Math.PI * 2);
     const swayValue = Math.sin(swayPhase) * CONFIG.avatar.idle.swayAmplitude;
-    
+
     if (this.vrm.scene) {
       // Y軸0度(回転なし)を試す
       this.vrm.scene.rotation.set(0, 0, swayValue);
-      
+
       // デバッグ: 1回だけログ出力
       if (!this.rotationLogged) {
         console.log('🔄 update()での回転:', {
@@ -555,7 +555,7 @@ export class AvatarSystem {
       // まばたき中
       const elapsed = this.clock.getElapsedTime() - this.blinkStartTime;
       const duration = CONFIG.avatar.expression.blinkDuration;
-      
+
       if (elapsed < duration) {
         // まばたきカーブ適用
         const t = elapsed / duration;
@@ -565,7 +565,7 @@ export class AvatarSystem {
         // まばたき終了
         this.isBlinking = false;
         this.currentExpression.blink = 0;
-        
+
         // 次のまばたきタイミングを設定
         const { min, max } = CONFIG.avatar.expression.blinkInterval;
         this.nextBlinkTime = this.blinkTimer + min + Math.random() * (max - min);
@@ -573,7 +573,7 @@ export class AvatarSystem {
     } else {
       // 次のまばたきまで待機
       this.blinkTimer += deltaTime;
-      
+
       if (this.blinkTimer >= this.nextBlinkTime) {
         this.isBlinking = true;
         this.blinkStartTime = this.clock.getElapsedTime();
@@ -645,5 +645,9 @@ export class AvatarSystem {
       VRMUtils.deepDispose(this.vrm.scene);
     }
     this.renderer.dispose();
+  }
+
+  getDomElement(): HTMLCanvasElement {
+    return this.renderer.domElement;
   }
 }

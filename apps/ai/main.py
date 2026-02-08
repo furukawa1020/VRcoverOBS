@@ -10,6 +10,11 @@ import threading
 import queue
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+from flask_sock import Sock
+
+# Virtual Camera
+from virtual_cam import VirtualCamera
+
 
 # Body Tracking
 from body_tracker import BodyTracker
@@ -42,6 +47,8 @@ except ImportError:
 
 app = Flask(__name__)
 CORS(app)
+sock = Sock(app)
+
 
 # 設定
 CONFIG = {
@@ -76,7 +83,10 @@ CONFIG = {
 whisper_model = None
 audio_queue = queue.Queue()
 is_recording = False
+is_recording = False
 body_tracker = None  # MediaPipe Body Tracker
+virtual_cam = None   # Virtual Camera
+
 
 
 def init_whisper():
@@ -284,6 +294,36 @@ def chat_endpoint():
     })
 
 
+@sock.route('/stream')
+def stream_socket(ws):
+    """ブラウザからの映像フレームを受信するWebSocket"""
+    global virtual_cam
+    
+    # 仮想カメラが起動していない場合は起動
+    if not virtual_cam:
+        virtual_cam = VirtualCamera()
+        if not virtual_cam.start():
+            # 起動失敗した場合
+            ws.close()
+            return
+
+    print("🔌 WebSocket: 映像ストリーム接続")
+    
+    try:
+        while True:
+            # バイナリデータ(JPEG/PNG)を受信
+            data = ws.receive()
+            if data:
+                virtual_cam.send_frame(data)
+                
+    except Exception as e:
+        print(f"⚠️ WebSocket切断: {e}")
+    finally:
+        pass
+        # 接続が切れてもカメラは維持する（再接続のため）
+
+
+
 def check_ollama_status():
     """Ollamaが起動しているか確認"""
     try:
@@ -339,4 +379,7 @@ if __name__ == '__main__':
         # 終了時にBody Trackerを停止
         if body_tracker:
             body_tracker.stop()
+        if virtual_cam:
+            virtual_cam.stop()
+
 
