@@ -121,6 +121,13 @@ export class AvatarSystem {
   }
 
   private async loadHDRI(path: string) {
+    // 安定性のため、一時的にHDRI読み込みを無効化し、常にシンプルな背景色を使用する
+    console.log('Using default background color (Safety Mode)');
+    this.scene.background = new THREE.Color(0x333333);
+    this.scene.environment = null;
+    return;
+
+    /*
     try {
       const loader = new RGBELoader();
       const texture = await loader.loadAsync(path);
@@ -133,6 +140,7 @@ export class AvatarSystem {
       this.scene.background = new THREE.Color(0x333333);
       this.scene.environment = null;
     }
+    */
   }
 
   async loadVRM(path: string) {
