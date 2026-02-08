@@ -81,13 +81,13 @@ faceUdpServer.on('message', (msg, rinfo) => {
   try {
 
     // OpenSeeFaceのバイナリフォーマットをパース
-    // フォーマット: time (8 bytes) + id (4 bytes) + データ (可変長)
+    // OpenSeeFaceのバイナリフォーマット
+    // Time(8) + ID(4) + W(4) + H(4) + EyeR(4) + EyeL(4) + Success(1) + PnP(4) + Qx(4) + Qy(4) + Qz(4) + Qw(4) + ...
     if (msg.length < 12) return;
 
-    const offset = 12; // タイムスタンプとIDをスキップ
-    let pos = offset;
+    let pos = 12; // Time + ID skipped
 
-    // フロート値を読み取るヘルパー関数
+    // Helper to safely read floats
     const readFloat = () => {
       if (pos + 4 > msg.length) return 0;
       const value = msg.readFloatLE(pos);
@@ -95,13 +95,44 @@ faceUdpServer.on('message', (msg, rinfo) => {
       return value;
     };
 
-    // 顔の回転 (quaternion → euler変換)
+    // 1. Width & Height (Skip or use if needed)
+    const cameraWidth = readFloat();
+    const cameraHeight = readFloat();
+
+    // 2. Eye Blink (0.0 - 1.0, OpenSeeFace sends 'openness')
+    const rightEyeOpen = readFloat();
+    const leftEyeOpen = readFloat();
+
+    // 3. Success (1 byte)
+    let success = 0;
+    if (pos + 1 <= msg.length) {
+      success = msg.readUInt8(pos);
+      pos += 1;
+    }
+
+    // 4. PnP Error
+    const pnpError = readFloat();
+
+    // 5. Quaternion Rotation
     const qx = readFloat();
     const qy = readFloat();
     const qz = readFloat();
     const qw = readFloat();
 
-    // Quaternion → Euler変換
+    // 6. Euler Angles (Optional, but we use Quaternions)
+    const ex = readFloat();
+    const ey = readFloat();
+    const ez = readFloat();
+
+    // 7. Translation (Face Position)
+    const tx = readFloat();
+    const ty = readFloat();
+    const tz = readFloat();
+
+    // --- Data Processing ---
+
+    // Quaternion to Euler conversion for Three.js
+    // Note: OpenSeeFace coordinates might need mapping to Three.js world
     const sinr_cosp = 2 * (qw * qx + qy * qz);
     const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
     const roll = Math.atan2(sinr_cosp, cosr_cosp);
@@ -119,26 +150,40 @@ faceUdpServer.on('message', (msg, rinfo) => {
       z: roll
     };
 
-    // 顔の位置
+    // Face Position
     trackingData.facePosition = {
-      x: readFloat(),
-      y: readFloat(),
-      z: readFloat()
+      x: tx,
+      y: ty,
+      z: tz
     };
 
-    // 目の状態 (66個のランドマークから計算)
-    // 簡易版: 最初の数値から推定
-    const eyeLeft = readFloat();
-    const eyeRight = readFloat();
-    trackingData.blink = 1.0 - Math.min(eyeLeft, eyeRight);
+    // Blink (1.0 = closed, 0.0 = open in our app usually? Or opposite?
+    // VRM usually expects 1.0 = Closed (Weight).
+    // OpenSeeFace sends "Openness" (1.0 = Open).
+    // So Blink = 1.0 - Openness
+    trackingData.blink = 1.0 - ((rightEyeOpen + leftEyeOpen) / 2.0);
 
-    // 口の開き (ランドマークから推定)
-    const mouthTop = readFloat();
-    const mouthBottom = readFloat();
-    trackingData.mouthOpen = Math.abs(mouthTop - mouthBottom);
+    // Mouth - OpenSeeFace sends landmarks later, but for now we might not have them easily parsed
+    // The standard packet ends here? No, landmarks follow.
+    // For now, let's just get head/eyes working.
+    // We can infer mouth open from landmarks if we parse them, or just default to 0 for now until verified.
+    // NOTE: Facetracker.py sends landmarks AFTER translation.
+    // Let's iterate landmarks if we want smooth mouth.
 
-    trackingData.confidence = 0.9; // OpenSeeFaceは通常高い精度
+    // ... Parsing landmarks for mouth (optional for basic movement) ...
+    // There are 66 landmarks * 2 floats (x,y) + 1 float (conf) = 3 floats per landmark
+    // 66 * 12 bytes = 792 bytes.
+
+    // Simplified Mouth Calculation (if enough data)
+    // We need landmark 62 (top lip) and 66 (bottom lip)? 
+    // Facetracker.py landmarks are: y, x, c
+
+    // For now, keep mouth static or use a simple hack if user speaks (audio based is handled elsewhere).
+    trackingData.mouthOpen = 0;
+
+    trackingData.confidence = success ? 0.9 : 0.0;
     trackingData.timestamp = Date.now();
+
 
     // デバッグ: 1%の確率でログ出力
     if (Math.random() < 0.01) {
