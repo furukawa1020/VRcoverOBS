@@ -177,7 +177,7 @@ class BodyTracker:
         ], dtype=np.float64)
         
         dist_coeffs = np.zeros((4, 1), dtype=np.float64)
-        success, rot_vec, trans_vec = cv2.solvePnP(self.face_3d, face_2d, cam_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+        success, rot_vec, trans_vec = cv2.solvePnP(self.face_3d, face_2d, cam_matrix, dist_coeffs, flags=cv2.SOLVEPNP_EPNP)
         
         if success:
             rmat, _ = cv2.Rodrigues(rot_vec)
@@ -187,8 +187,8 @@ class BodyTracker:
             yaw = angles[1]
             roll = angles[2]
             
-            self.osc_client.send_message("/face/rotation", float(pitch), float(yaw), float(roll))
-            # print(f"[DEBUG] Face Rot: P={pitch:.2f}, Y={yaw:.2f}, R={roll:.2f}")
+            self.osc_client.send_message("/face/rotation", [float(pitch), float(yaw), float(roll)])
+            print(f"[DEBUG] Face Rot: P={pitch:.2f}, Y={yaw:.2f}, R={roll:.2f}")
 
         # Reset Face expression for safety
         self.osc_client.send_message("/face/blink", 0.0)
