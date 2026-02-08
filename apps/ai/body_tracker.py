@@ -33,6 +33,7 @@ class BodyTracker:
         
         # Init Pose Landmarker
         try:
+            print("[INFO] Tracker v2 Starting... (Coordinate Logging Enabled)")
             pose_options = vision.PoseLandmarkerOptions(
                 base_options=python.BaseOptions(model_asset_path=pose_model_path),
                 running_mode=vision.RunningMode.IMAGE
@@ -120,8 +121,9 @@ class BodyTracker:
                         self._process_face_from_pose(landmarks, img_w, img_h)
             
             except Exception as e:
-                # print(f"[ERROR] Tracking error: {e}")
-                pass
+                print(f"[ERROR] Tracking loop error: {e}")
+                import traceback
+                traceback.print_exc()
             
             # Real-time logging (User Request: "Coordinates flowing")
             if pose_result and pose_result.pose_landmarks:
@@ -175,7 +177,7 @@ class BodyTracker:
         ], dtype=np.float64)
         
         dist_coeffs = np.zeros((4, 1), dtype=np.float64)
-        success, rot_vec, trans_vec = cv2.solvePnP(self.face_3d, face_2d, cam_matrix, dist_coeffs)
+        success, rot_vec, trans_vec = cv2.solvePnP(self.face_3d, face_2d, cam_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
         
         if success:
             rmat, _ = cv2.Rodrigues(rot_vec)
@@ -186,11 +188,19 @@ class BodyTracker:
             roll = angles[2]
             
             self.osc_client.send_message("/face/rotation", float(pitch), float(yaw), float(roll))
+            # print(f"[DEBUG] Face Rot: P={pitch:.2f}, Y={yaw:.2f}, R={roll:.2f}")
 
         # Reset Face expression for safety
         self.osc_client.send_message("/face/blink", 0.0)
         self.osc_client.send_message("/face/mouth", 0.0, 0.0)
         self.osc_client.send_message("/face/eye", 0.0, 0.0)
+
+    # ---------------------------------------------------------
+    # ERROR HANDLING UNCOMMENTED
+    # ---------------------------------------------------------
+            # except Exception as e:
+            #    print(f"[ERROR] Tracking error: {e}")
+            #    pass
 
 if __name__ == "__main__":
     tracker = BodyTracker()
