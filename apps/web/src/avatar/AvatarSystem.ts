@@ -41,6 +41,11 @@ export class AvatarSystem {
 
   private currentHeadRotation: { x: number; y: number; z: number } | null = null;
 
+  private targetHeadRotation: THREE.Quaternion = new THREE.Quaternion(); // 目標回転（スラープ補間用）
+
+  // 全身の骨の目標回転を保持するマップ (BoneName -> Quaternion)
+  private targetBoneRotations = new Map<string, THREE.Quaternion>();
+
   async init() {
     // シーンの初期化
     this.scene = new THREE.Scene();
@@ -399,7 +404,9 @@ export class AvatarSystem {
 
         // 回転を合成 (順序: Yaw -> Pitch -> Roll が一般的)
         const q = new THREE.Quaternion().copy(qYaw).multiply(qPitch).multiply(qRoll);
-        head.quaternion.copy(q);
+
+        // 直接適用せず、目標値として保持する（アニメーションループで補間）
+        this.targetHeadRotation.copy(q);
       }
     }
   }
@@ -517,7 +524,11 @@ export class AvatarSystem {
               if (bend < 0) bend = 0;
               if (bend > 2.5) bend = 2.5;
 
-              lowerArm.rotation.set(0, bend, 0);
+              if (bend > 2.5) bend = 2.5;
+
+              // lowerArm.rotation.set(0, bend, 0);
+              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, bend, 0));
+              this.setTargetRotation('leftLowerArm', q);
 
               // --- ピースサイン判定 (Z軸) ---
               // 手首がカメラに近い (Z < -0.3 くらい？) 場合にピース
@@ -568,7 +579,9 @@ export class AvatarSystem {
               if (bend > 2.5) bend = 2.5;
 
               // 右肘: マイナスで曲がる (resetToIdlePose: -1.5)
-              lowerArm.rotation.set(0, -bend, 0);
+              // lowerArm.rotation.set(0, -bend, 0);
+              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -bend, 0));
+              this.setTargetRotation('rightLowerArm', q);
 
               // --- ピースサイン判定 (Z軸) ---
               const distZ = w.z - s.z;
@@ -585,14 +598,26 @@ export class AvatarSystem {
   }
 
   /**
+   * ボーンの目標回転を設定（直接適用せずMapに保存）
+   */
+  private setTargetRotation(boneName: string, quaternion: THREE.Quaternion) {
+    // 既存のターゲットがあれば取得、なければ新規作成（GC抑制）
+    if (!this.targetBoneRotations.has(boneName)) {
+      this.targetBoneRotations.set(boneName, new THREE.Quaternion());
+    }
+    this.targetBoneRotations.get(boneName)!.copy(quaternion);
+  }
+
+  /**
    * 指のポーズを設定
    */
   private setFingerPose(hand: 'left' | 'right', pose: 'peace' | 'neutral') {
     if (!this.vrm || !this.vrm.humanoid) return;
 
     const setRot = (boneName: string, x: number, y: number, z: number) => {
-      const bone = this.vrm!.humanoid!.getNormalizedBoneNode(boneName as any);
-      if (bone) bone.rotation.set(x, y, z);
+      // 直接回転を設定せず、ターゲットマップを経由する
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
+      this.setTargetRotation(boneName, q);
     };
 
     const prefix = hand === 'left' ? 'left' : 'right';
@@ -795,6 +820,25 @@ export class AvatarSystem {
       // VRMの更新
       if (this.vrm) {
         this.vrm.update(deltaTime);
+
+        // 頭部回転のスラープ補間（フレームレート非依存の滑らかさ）
+        const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
+
+        const interpolationSpeed = 15.0 * deltaTime; // 補間速度
+
+        if (head) {
+          head.quaternion.slerp(this.targetHeadRotation, interpolationSpeed);
+        }
+
+        // 全身の骨の補間 (Mapから適用)
+        if (this.vrm.humanoid) {
+          this.targetBoneRotations.forEach((targetQuat, boneName) => {
+            const bone = this.vrm!.humanoid!.getNormalizedBoneNode(boneName as any);
+            if (bone) {
+              bone.quaternion.slerp(targetQuat, interpolationSpeed);
+            }
+          });
+        }
       }
 
       // アイドルアニメーション（VRMのみ）
