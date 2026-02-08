@@ -3,6 +3,14 @@ VRabater AI Service
 ローカルLLM (Ollama) + STT (Whisper/Vosk) + TTS (Piper) + Body Tracking (MediaPipe)
 """
 
+import sys
+import io
+
+# Fix Windows console encoding for Unicode characters
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 import os
 import json
 import time
@@ -337,14 +345,14 @@ def check_ollama_status():
 
 if __name__ == '__main__':
     print("""
-╔════════════════════════════════════════╗
-║  VRabater AI Service                   ║
-╠════════════════════════════════════════╣
-║  STT: Whisper (ローカル)               ║
-║  LLM: Ollama                           ║
-║  TTS: gTTS (Google Text-to-Speech)     ║
-║  Body: MediaPipe                       ║
-╚════════════════════════════════════════╝
+==========================================
+  VRabater AI Service
+==========================================
+  STT: Whisper (Local)
+  LLM: Ollama
+  TTS: gTTS (Google Text-to-Speech)
+  Body: MediaPipe Holistic
+==========================================
     """)
     
     # Whisper初期化
