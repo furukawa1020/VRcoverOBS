@@ -57,23 +57,33 @@ class BodyTracker:
         
         print("✅ HolisticTracker initialized")
     
-    def start(self, camera_id=0):
-        """Start camera and tracking"""
+    def start(self):
+        """Start camera and tracking. Silently retry multiple IDs."""
         if self.running:
             print("⚠️ Already running")
             return True
         
-        self.cap = cv2.VideoCapture(camera_id)
-        if not self.cap.isOpened():
-            print("❌ Cannot open camera")
-            return False
+        # Try camera IDs 0, 1, 2
+        for cam_id in [0, 1, 2]:
+            print(f"🔍 Checking camera ID {cam_id}...")
+            self.cap = cv2.VideoCapture(cam_id)
+            if self.cap.isOpened():
+                # Test read
+                ret, frame = self.cap.read()
+                if ret:
+                    print(f"✅ Camera opened successfully (ID: {cam_id})")
+                    self.running = True
+                    self.thread = threading.Thread(target=self._tracking_loop, daemon=True)
+                    self.thread.start()
+                    return True
+                else:
+                    print(f"⚠️ Camera {cam_id} opened but cannot read frame.")
+                    self.cap.release()
+            else:
+                print(f"❌ Camera {cam_id} is not accessible.")
         
-        self.running = True
-        self.thread = threading.Thread(target=self._tracking_loop, daemon=True)
-        self.thread.start()
-        
-        print(f"🎥 Camera started (ID: {camera_id})")
-        return True
+        print("❌ Could not find any working camera.")
+        return False
     
     def stop(self):
         """Stop tracking"""
@@ -82,7 +92,6 @@ class BodyTracker:
             self.thread.join(timeout=2.0)
         if self.cap:
             self.cap.release()
-        cv2.destroyAllWindows()
         print("🛑 Camera stopped")
     
     def _tracking_loop(self):
@@ -93,7 +102,8 @@ class BodyTracker:
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
-                time.sleep(0.1)
+                print("⚠️ Failed to capture frame. Retrying...")
+                time.sleep(0.5)
                 continue
             
             # Flip horizontally (mirror mode)
@@ -114,12 +124,13 @@ class BodyTracker:
             if results.face_landmarks:
                 self._process_face(results.face_landmarks, img_w, img_h)
 
-            # Preview (optional: can be disabled for performance)
-            cv2.imshow("VRabater Holistic", frame)
-            
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                self.running = False
-                break
+            # FPS counter
+            fps_counter += 1
+            if time.time() - fps_time > 1.0:
+                fps = fps_counter / (time.time() - fps_time)
+                fps_counter = 0
+                fps_time = time.time()
+                # print(f"FPS: {fps:.1f}")
     
     def _send_pose_data(self, landmarks):
         """Send pose data via OSC"""
