@@ -496,8 +496,10 @@ export class AvatarSystem {
             // Z回転（腕の上げ下げ）: Y差分
             const rotZ = -(dy * 2.0); // 係数を少し下げる (2.5 -> 2.0)
             // Y回転（腕の前後）: Z差分
-            // ユーザー報告: 前に出すと後ろに行く -> 符号反転
-            const rotY = (dz * 2.5); // 係数を少し下げる (3.0 -> 2.5)
+            // 修正: 前に出すと後ろに行く問題を再修正 (符号反転)
+            // Left: +Y is Forward. dz is negative when forward.
+            // So we need Positive result from Negative dz. -> -dz
+            const rotY = -(dz * 2.5);
 
             if (!isNaN(rotZ)) {
               const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY, rotZ));
@@ -571,7 +573,9 @@ export class AvatarSystem {
             const dz = e.z - s.z;
 
             const rotZ = (dy * 2.0); // 右はプラスで下がる (2.5 -> 2.0)
-            const rotY = -(dz * 2.5); // 符号反転 (元: dz * 2.0 -> 3.0 -> 2.5)
+            // Right: -Y is Forward. dz is negative when forward.
+            // So we need Negative result from Negative dz. -> +dz
+            const rotY = (dz * 2.5);
 
             if (!isNaN(rotZ)) {
               const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY, rotZ));
