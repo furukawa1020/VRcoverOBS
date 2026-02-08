@@ -38,4 +38,5 @@ Write-Host ""
 Write-Host "停止するには各ウィンドウでCtrl+Cを押してください" -ForegroundColor White
 
 # このウィンドウは開いたままにする
-Read-Host "Enterキーを押すと終了します"
+Read-Host "Press Enter to exit..."
+
