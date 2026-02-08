@@ -99,12 +99,12 @@ def init_whisper():
     
     try:
         model_name = CONFIG["stt"]["model"]
-        print(f"📥 Whisper {model_name} モデル読み込み中...")
+        print(f"[LOAD] Whisper {model_name} model loading...")
         whisper_model = whisper.load_model(model_name)
-        print(f"✅ Whisper初期化完了")
+        print(f"[OK] Whisper initialized")
         return True
     except Exception as e:
-        print(f"❌ Whisper初期化エラー: {e}")
+        print(f"[ERROR] Whisper initialization error: {e}")
         return False
 
 
@@ -163,7 +163,7 @@ def llm_generate(prompt, system_prompt=None):
     except requests.exceptions.ConnectionError:
         return {"error": "Ollamaに接続できません。起動していますか？"}
     except Exception as e:
-        print(f"❌ LLMエラー: {e}")
+        print(f"[ERROR] LLM Error: {e}")
         return {"error": str(e)}
 
 
@@ -185,15 +185,15 @@ def tts_synthesize(text):
         # Base64エンコード
         audio_base64 = base64.b64encode(audio_buffer.read()).decode('utf-8')
         
-        print(f"🔊 TTS: {text[:30]}...")
+        print(f"[TTS] Synthesizing: {text[:30]}...")
         return {
             "audio": audio_base64,
             "format": "mp3",
             "message": "音声合成完了"
         }
     except Exception as e:
-        print(f"❌ TTS Error: {e}")
-        return {"audio": None, "message": f"TTS失敗: {str(e)}"}
+        print(f"[ERROR] TTS Error: {e}")
+        return {"audio": None, "message": f"TTS failure: {str(e)}"}
 
 
 # ===== API エンドポイント =====
@@ -317,7 +317,7 @@ def stream_socket(ws):
                 virtual_cam.send_frame(data)
                 
     except Exception as e:
-        print(f"⚠️ WebSocket切断: {e}")
+        print(f"[WARN] WebSocket disconnected: {e}")
     finally:
         pass
         # 接続が切れてもカメラは維持する（再接続のため）
@@ -337,14 +337,14 @@ def check_ollama_status():
 
 if __name__ == '__main__':
     print("""
-╔════════════════════════════════════════╗
-║  VRabater AI Service                   ║
-╠════════════════════════════════════════╣
-║  STT: Whisper (ローカル)               ║
-║  LLM: Ollama                           ║
-║  TTS: gTTS (Google Text-to-Speech)     ║
-║  Body: MediaPipe                       ║
-╚════════════════════════════════════════╝
++------------------------------------------+
+|  VRabater AI Service                     |
++------------------------------------------+
+|  STT: Whisper (Local)                    |
+|  LLM: Ollama                             |
+|  TTS: gTTS (Google Text-to-Speech)       |
+|  Body: MediaPipe Holistic                |
++------------------------------------------+
     """)
     
     # Whisper初期化
@@ -353,13 +353,13 @@ if __name__ == '__main__':
     
     # Ollama確認
     if check_ollama_status():
-        print(f"✅ Ollama接続OK: {CONFIG['llm']['url']}")
+        print(f"[OK] Ollama connection OK: {CONFIG['llm']['url']}")
     else:
-        print(f"⚠️ Ollama未起動: {CONFIG['llm']['url']}")
-        print("   起動方法: ollama serve")
+        print(f"[WARN] Ollama is not running: {CONFIG['llm']['url']}")
+        print("   How to start: ollama serve")
     
     # Body Tracker初期化 & 起動
-    print("🎥 Body Tracking 初期化中...")
+    print("[LOAD] Body Tracking initializing...")
     try:
         # Body Trackerを起動 (※ OpenSeeFaceとカメラが競合するため、デフォルトではOFFにします)
         # ユーザー要望により有効化: カメラ競合に注意
@@ -379,7 +379,7 @@ if __name__ == '__main__':
         body_tracker = None
     
     # Flask起動
-    print("\n🚀 AIサービス起動: http://localhost:5000\n")
+    print("\n[START] AI Service starting: http://localhost:5000\n")
     try:
         app.run(host='0.0.0.0', port=5000, debug=False)
     finally:
