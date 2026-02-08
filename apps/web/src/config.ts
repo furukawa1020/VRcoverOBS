@@ -70,7 +70,7 @@ export const CONFIG = {
     expression: {
       blinkInterval: { min: 2.5, max: 5.0 }, // 秒
       blinkDuration: 0.12,                     // 秒
-      smoothingFactor: 0.35,                   // EMA係数
+      smoothingFactor: 0.1,                   // EMA係数
 
       // まばたきカーブ（easeInOutCubic）
       blinkCurve: (t: number) => {
@@ -90,7 +90,7 @@ export const CONFIG = {
       enableSaccade: true,          // 微小サッカード
       saccadeInterval: { min: 100, max: 300 }, // ms
       saccadeAmplitude: 0.003,      // ラジアン（約0.17°）
-      smoothingFactor: 0.25,
+      smoothingFactor: 0.08,
     },
   },
 
@@ -101,9 +101,9 @@ export const CONFIG = {
 
     // 補間設定
     interpolation: {
-      position: 0.35,
-      rotation: 0.30,
-      expression: 0.35,
+      position: 0.1,
+      rotation: 0.1,
+      expression: 0.1,
     },
   },
 

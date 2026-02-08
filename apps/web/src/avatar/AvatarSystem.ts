@@ -39,6 +39,8 @@ export class AvatarSystem {
     eyeY: 0,
   };
 
+  private currentHeadRotation: { x: number; y: number; z: number } | null = null;
+
   async init() {
     // シーンの初期化
     this.scene = new THREE.Scene();
@@ -339,42 +341,63 @@ export class AvatarSystem {
       }
     }
 
-    // 頭部回転 (Degrees -> Radians変換    // 頭部回転 (Degrees -> Radians変換 & 補正)
+    // 頭部回転 (Degrees -> Radians変換 & 補正 & スムージング)
     if (data.headRotation) {
       // RawBoneNodeではなくNormalizedBoneNodeを使用してリグの差異を吸収
       const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
       if (head) {
-        // 顔が横に90度なる -> Z軸(Roll)にY軸(Yaw)の値が入っている可能性など
-        // OpenSeeFace: X=Pitch, Y=Yaw, Z=Roll
-        // Three.js: X=Pitch, Y=Yaw, Z=Roll (ただし回転順序で荒ぶる)
+        // --- 1. デバイス座標系への補正 (OpenCV -> VRM) ---
+        // OpenCV: P=0, Y=0, R=180 (Upside Down) -> VRM: P=0, Y=0, R=0
 
-        // 【修正】OpenSeeFaceから来る値が「180度（後ろ向き）」基準になっているため、
-        // 180度引いて「0度（正面）」基準に戻す補正を入れる
-        // 入力が -175 などの場合、+180 すると 5度（正面）になる
-        const rx = data.headRotation.x;
-        const correctedPitch = (Math.abs(rx) > 90) ? (rx + (rx > 0 ? -180 : 180)) : rx;
+        let rx = data.headRotation.x;
+        let ry = data.headRotation.y;
+        let rz = data.headRotation.z;
 
-        // 【修正】Z軸（Roll）が -90度（横倒し）になっている場合、+90度して補正
-        const rz = data.headRotation.z;
-        let correctedRoll = rz;
-        if (rz < -60) correctedRoll += 90;
-        else if (rz > 60) correctedRoll -= 90;
-
-        // デバッグログ (頻度を落として表示)
-        if (Math.random() < 0.01) {
-          console.log(`[HeadRot] Raw: ${rx.toFixed(1)}, ${data.headRotation.y.toFixed(1)}, ${rz.toFixed(1)} -> Fixed: ${correctedPitch.toFixed(1)}, ${correctedRoll.toFixed(1)}`);
+        // Roll(Z)が 180度近辺(逆さま)の場合、0度近辺に補正する
+        // 例: -171 -> 9, 175 -> -5
+        if (Math.abs(rz) > 150) {
+          rz = (rz > 0) ? rz - 180 : rz + 180;
+          // Rollが反転していたので、符号も反転させる必要があるかも？
+          // いったん「オフセット除去」のみ行う
         }
 
-        const pitch = THREE.MathUtils.degToRad(correctedPitch);
-        const yaw = THREE.MathUtils.degToRad(data.headRotation.y);
-        const roll = THREE.MathUtils.degToRad(correctedRoll);
+        // Pitch(X)も同様に反転している可能性があるが、ログでは P=5 程度なので正常範囲に見える
+        // ただし、顔の向きによっては微調整が必要
 
-        // クオータニオンで回転を作成（ジンバルロック回避）
+        // --- 2. スムージング (EMA) ---
+        // 前回の値を保持するための変数をクラスに追加する必要があるが、
+        // 簡易的に currentExpression に持たせるか、新規プロパティを作る
+        // 既存の currentExpression には入っていないため、ここで計算
+
+        // 便宜上、this.currentExpression に rotation を追加拡張するか、
+        // あるいは個別に保持する。今回は this.currentHeadRotation を使用 (後で定義追加)
+
+        const smooth = CONFIG.avatar.lookAt.smoothingFactor; // 視線と同じ係数を使う
+
+        // 初期化 (初回のみ)
+        if (!this.currentHeadRotation) {
+          this.currentHeadRotation = { x: rx, y: ry, z: rz };
+        }
+
+        this.currentHeadRotation.x = this.ema(this.currentHeadRotation.x, rx, smooth);
+        this.currentHeadRotation.y = this.ema(this.currentHeadRotation.y, ry, smooth);
+        this.currentHeadRotation.z = this.ema(this.currentHeadRotation.z, rz, smooth);
+
+        // --- 3. 回転の適用 ---
+        const pitch = THREE.MathUtils.degToRad(this.currentHeadRotation.x);
+        const yaw = THREE.MathUtils.degToRad(this.currentHeadRotation.y);
+        const roll = THREE.MathUtils.degToRad(this.currentHeadRotation.z);
+
+        // クオータニオンで回転を作成
+        // 軸の定義: VRM Normalizedでは +Y=Up, +Z=Front, +X=Right (Right-Handed)
+        // 顔を上げる=X軸マイナス回転? (Right-Hand Rule: Thumb=+X, Fingers curl +Y->+Z. No.)
+        // Usually Pitch rotates around X.
+
         const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -pitch);
         const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -yaw);
         const qRoll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll);
 
-        // 回転を合成 (順序: Yaw -> Pitch -> Roll)
+        // 回転を合成 (順序: Yaw -> Pitch -> Roll が一般的)
         const q = new THREE.Quaternion().copy(qYaw).multiply(qPitch).multiply(qRoll);
         head.quaternion.copy(q);
       }
