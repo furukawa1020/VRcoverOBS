@@ -559,6 +559,7 @@ export class AvatarSystem {
         }
       }
     }
+  }
 
   /**
    * 指のポーズを設定
