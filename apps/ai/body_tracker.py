@@ -26,25 +26,10 @@ class BodyTracker:
         
         # Paths to models
         base_path = os.path.dirname(os.path.abspath(__file__))
-        face_model_path = os.path.join(base_path, "models", "face_landmarker.task")
         pose_model_path = os.path.join(base_path, "models", "pose_landmarker.task")
         
-        # Check if models exist
-        if not os.path.exists(face_model_path) or not os.path.exists(pose_model_path):
-            print(f"[WARN] MediaPipe models missing in {base_path}/models")
-        
-        # Init Face Landmarker
-        try:
-            face_options = vision.FaceLandmarkerOptions(
-                base_options=python.BaseOptions(model_asset_path=face_model_path),
-                running_mode=vision.RunningMode.IMAGE,
-                output_face_blendshapes=False
-            )
-            self.face_landmarker = vision.FaceLandmarker.create_from_options(face_options)
-            print("[OK] FaceLandmarker initialized")
-        except Exception as e:
-            print(f"[ERROR] FaceLandmarker Init Error: {e}")
-            self.face_landmarker = None
+        # Init Face Landmarker (DISABLED - CAUSES HANG)
+        self.face_landmarker = None
         
         # Init Pose Landmarker
         try:
@@ -58,14 +43,14 @@ class BodyTracker:
             print(f"[ERROR] PoseLandmarker Init Error: {e}")
             self.pose_landmarker = None
         
-        # 3D Model points for PnP
+        # 3D Model points for PnP (Adjusted for Pose Landmarks)
+        # Using 5 points: Nose, L-Eye, R-Eye, L-Mouth, R-Mouth
         self.face_3d = np.array([
-            (0.0, 0.0, 0.0),             # Nose tip
-            (0.0, -330.0, -65.0),        # Chin
-            (-225.0, 170.0, -135.0),     # Left Eye Left Corner
-            (225.0, 170.0, -135.0),      # Right Eye Right Corner
-            (-150.0, -150.0, -125.0),    # Left Mouth Corner
-            (150.0, -150.0, -125.0)      # Right Mouth Corner
+            (0.0, 0.0, 0.0),             # Nose (0)
+            (-225.0, 170.0, -135.0),     # Left Eye (2)
+            (225.0, 170.0, -135.0),      # Right Eye (5)
+            (-150.0, -150.0, -125.0),    # Left Mouth (9)
+            (150.0, -150.0, -125.0)      # Right Mouth (10)
         ], dtype=np.float64)
     
     def start(self):
@@ -103,16 +88,12 @@ class BodyTracker:
     
     def _tracking_loop(self):
         """Main tracking loop"""
-        fps_time = time.time()
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
                 print("⚠️ Failed to capture frame. Retrying...")
                 time.sleep(0.5)
                 continue
-            
-            # Debug log to confirmed frame reading
-            # print(f"[DEBUG] Frame captured: {frame.shape}")
             
             frame = cv2.flip(frame, 1)
             img_h, img_w, _ = frame.shape
@@ -122,19 +103,13 @@ class BodyTracker:
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
                 
-                # 1. Body Tracking (Pose)
+                # 1. Body Tracking (Pose) - NOW INCLUDES FACE APPROX
                 if self.pose_landmarker:
                     pose_result = self.pose_landmarker.detect(mp_image)
                     if pose_result and pose_result.pose_landmarks:
-                        self._send_pose_data(pose_result.pose_landmarks[0])
-                
-                # 2. Face Tracking (Rotation & Expressions)
-                if self.face_landmarker:
-                    # print("DEBUG: Pre Face")
-                    face_result = self.face_landmarker.detect(mp_image)
-                    # print("DEBUG: Post Face")
-                    if face_result and face_result.face_landmarks:
-                        self._process_face(face_result.face_landmarks[0], img_w, img_h)
+                        landmarks = pose_result.pose_landmarks[0]
+                        self._send_pose_data(landmarks)
+                        self._process_face_from_pose(landmarks, img_w, img_h)
             
             except Exception as e:
                 # print(f"[ERROR] Tracking error: {e}")
@@ -160,13 +135,14 @@ class BodyTracker:
             self.osc_client.send_message(f"/body/{part_name}/y", float(lm.y))
             self.osc_client.send_message(f"/body/{part_name}/z", float(lm.z))
 
-    def _process_face(self, face_landmarks, img_w, img_h):
-        """Estimate head rotation using PnP"""
-        pnp_indices = [1, 152, 33, 263, 61, 291]
+    def _process_face_from_pose(self, landmarks, img_w, img_h):
+        """Estimate head rotation using Pose Landmarks (0-10)"""
+        # Pose Landmarks: 0=Nose, 2=LEye, 5=REye, 9=LMouth, 10=RMouth
+        pnp_indices = [0, 2, 5, 9, 10]
         
         face_2d = []
         for idx in pnp_indices:
-            lm = face_landmarks[idx]
+            lm = landmarks[idx]
             face_2d.append([lm.x * img_w, lm.y * img_h])
         
         face_2d = np.array(face_2d, dtype=np.float64)
@@ -191,17 +167,9 @@ class BodyTracker:
             
             self.osc_client.send_message("/face/rotation", float(pitch), float(yaw), float(roll))
 
-        # Basic Blink / Mouth
-        eye_l_top = face_landmarks[159]
-        eye_l_bot = face_landmarks[145]
-        eye_dist = abs(eye_l_top.y - eye_l_bot.y)
-        blink = 1.0 if eye_dist < 0.008 else 0.0
-        self.osc_client.send_message("/face/blink", float(blink))
-        
-        m_top = face_landmarks[13]
-        m_bot = face_landmarks[14]
-        mouth_open = max(0.0, (m_bot.y - m_top.y - 0.01) * 20)
-        self.osc_client.send_message("/face/mouth", float(mouth_open), 0.0)
+        # Reset Face expression for safety
+        self.osc_client.send_message("/face/blink", 0.0)
+        self.osc_client.send_message("/face/mouth", 0.0, 0.0)
         self.osc_client.send_message("/face/eye", 0.0, 0.0)
 
 if __name__ == "__main__":
