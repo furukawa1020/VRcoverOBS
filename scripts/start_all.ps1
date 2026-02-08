@@ -33,7 +33,8 @@ Write-Host "   Gateway: ws://localhost:8080" -ForegroundColor Cyan
 Write-Host "   AI API:  http://localhost:5000" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "⚠️ OpenSeeFace needs to be started manually if needed:" -ForegroundColor Yellow
-Write-Host "   python facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1" -ForegroundColor Gray
+Write-Host "   python tools/OpenSeeFace/facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1" -ForegroundColor Gray
+
 Write-Host ""
 Write-Host "Press Enter to exit this launcher (services will keep running)..."
 Read-Host

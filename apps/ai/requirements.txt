@@ -22,3 +22,8 @@ piper-tts>=1.2.0
 # Virtual Camera & WebSocket
 pyvirtualcam>=0.11.1
 flask-sock>=0.7.0
+
+# OpenSeeFace Dependencies
+opencv-python>=4.8.0
+onnxruntime>=1.15.0
+pillow>=10.0.0
