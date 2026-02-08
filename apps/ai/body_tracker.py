@@ -68,6 +68,8 @@ class BodyTracker:
                 ret, frame = self.cap.read()
                 if ret:
                     print(f"[OK] Camera opened successfully (ID: {cam_id})")
+                    self.camera_id = cam_id
+                    self.cap.release() # Release so tracking loop can open it
                     self.running = True
                     self.thread = threading.Thread(target=self._tracking_loop, daemon=True)
                     self.thread.start()
@@ -88,49 +90,66 @@ class BodyTracker:
         print("[STOP] Camera stopped")
     
     def _tracking_loop(self):
-        """Main tracking loop"""
-        fps_time = time.time()
-        cam_id = int(self.cap.get(cv2.CAP_PROP_POS_MSEC) if self.cap else -1) # Just a placeholder
-        # Actual cam id is local to start(), but we can't access it easily without class var
-        # Let's just use '?' for now or fix it proper.
-        # Actually I can save self.cam_id
+        print(f"[INFO] Tracker started.")
+        self.cap = cv2.VideoCapture(self.camera_id)
         
+        # FPS Calculation
+        frame_count = 0
+        start_time = time.time()
+
         while self.running:
-            pose_result = None
             ret, frame = self.cap.read()
             if not ret:
-                print("⚠️ Failed to capture frame. Retrying...")
+                print("[WARN] Camera frame empty. Retrying...")
                 time.sleep(0.5)
                 continue
-            
-            frame = cv2.flip(frame, 1)
-            img_h, img_w, _ = frame.shape
-            
-            # Convert to MediaPipe Image
+
             try:
+                # To improve performance, optionally mark the image as not writeable to
+                # pass by reference.
+                frame.flags.writeable = False
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
                 
                 # 1. Body Tracking (Pose) - NOW INCLUDES FACE APPROX
+                pose_result = None
                 if self.pose_landmarker:
-                    pose_result = self.pose_landmarker.detect(mp_image)
-                    if pose_result and pose_result.pose_landmarks:
-                        landmarks = pose_result.pose_landmarks[0]
-                        # print("[DEBUG] Pose Detected!")
-                        self._send_pose_data(landmarks)
-                        self._process_face_from_pose(landmarks, img_w, img_h)
-            
+                    pose_result = self.pose_landmarker.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame))
+
+                frame.flags.writeable = True
+                # frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR) # Not needed if we don't display
+
+                img_h, img_w, _ = frame.shape
+
+                if pose_result and pose_result.pose_landmarks:
+                    landmarks = pose_result.pose_landmarks[0]
+                    # Process Body
+                    self._send_pose_data(landmarks) # Renamed from _process_body_pose to match existing
+                    
+                    # Process Face
+                    self._process_face_from_pose(landmarks, img_w, img_h)
+                    
+                    # FPS/Status Log (Every 30 frames ~ 1 sec)
+                    frame_count += 1
+                    if frame_count % 30 == 0:
+                        elapsed = time.time() - start_time
+                        fps = frame_count / elapsed
+                        print(f"[STATUS] FPS: {fps:.1f} | Tracking Active")
+                        frame_count = 0
+                        start_time = time.time()
+                else:
+                    # If no pose is detected, still update FPS and indicate searching
+                    frame_count += 1
+                    if frame_count % 30 == 0:
+                        elapsed = time.time() - start_time
+                        fps = frame_count / elapsed
+                        print(f"[STATUS] FPS: {fps:.1f} | Searching for body...")
+                        frame_count = 0
+                        start_time = time.time()
+
             except Exception as e:
                 print(f"[ERROR] Tracking loop error: {e}")
                 import traceback
                 traceback.print_exc()
-            
-            # Real-time logging (User Request: "Coordinates flowing")
-            if pose_result and pose_result.pose_landmarks:
-                lm = pose_result.pose_landmarks[0]
-                nose = lm[0]
-                wrist_l = lm[15]
-                print(f"[KEYPOINTS] Nose: ({nose.x:.3f}, {nose.y:.3f}) | L_Wrist: ({wrist_l.x:.3f}, {wrist_l.y:.3f}) | Sending...")
             else:
                 print("[STATUS] Searching for body...")
             
