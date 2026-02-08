@@ -769,8 +769,8 @@ export class AvatarSystem {
         this.proceduralAvatar.update(deltaTime);
       }
 
-      // VRMの更新（ボディトラッキング時はスキップ）
-      if (this.vrm && !this.hasBodyTracking) {
+      // VRMの更新
+      if (this.vrm) {
         this.vrm.update(deltaTime);
       }
 
