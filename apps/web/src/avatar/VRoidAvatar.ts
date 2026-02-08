@@ -50,8 +50,9 @@ export class VRoidAvatar {
       if (humanoid) {
         const leftArm = humanoid.getNormalizedBoneNode('leftUpperArm');
         const rightArm = humanoid.getNormalizedBoneNode('rightUpperArm');
-        if (leftArm) leftArm.rotation.z = Math.PI / 3;  // 60度下げる
-        if (rightArm) rightArm.rotation.z = -Math.PI / 3; // 60度下げる
+        // Z回転で下げる
+        if (leftArm) leftArm.rotation.z = Math.PI / 2.2;  // 約80度下げる
+        if (rightArm) rightArm.rotation.z = -Math.PI / 2.2; // 約80度下げる
       }
 
       console.log('[VRoidAvatar] 🔄 回転・ポーズ設定完了');

@@ -114,25 +114,30 @@ faceUdpServer.on('message', (msg, rinfo) => {
     const pnpError = readFloat();
 
     // 5. Quaternion Rotation
-    const qx = readFloat();
-    const qy = readFloat();
-    const qz = readFloat();
-    const qw = readFloat();
+    // OpenSeeFace (Unity Convention: Left-Handed, Y-Up)
+    // We need to convert to Three.js (Right-Handed, Y-Up)
+    // Typically: x -> -x, y -> y, z -> -z for position.
+    // For Quaternion: x -> x, y -> -y, z -> -z, w -> w ?
+    // Let's try standard conversion for webcam mirroring.
 
-    // 6. Euler Angles (Optional, but we use Quaternions)
-    const ex = readFloat();
-    const ey = readFloat();
-    const ez = readFloat();
+    let qx = readFloat();
+    let qy = readFloat();
+    let qz = readFloat();
+    let qw = readFloat();
 
-    // 7. Translation (Face Position)
-    const tx = readFloat();
-    const ty = readFloat();
-    const tz = readFloat();
+    // Coordinate System Conversion
+    // Unity (LHS) -> Three.js (RHS)
+    // Swap X and Z? Or Negate?
+    // Experimentally: 
+    // If input is mirrored (webcam), we might need to flip X.
 
-    // --- Data Processing ---
+    // Trial 1: x, -y, -z, w (Conjugate-ish?)
+    qx = -qx;
+    qy = qy;
+    qz = -qz;
+    // qw = qw;
 
-    // Quaternion to Euler conversion for Three.js
-    // Note: OpenSeeFace coordinates might need mapping to Three.js world
+    // Quaternion → Euler変換
     const sinr_cosp = 2 * (qw * qx + qy * qz);
     const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
     const roll = Math.atan2(sinr_cosp, cosr_cosp);
@@ -145,9 +150,9 @@ faceUdpServer.on('message', (msg, rinfo) => {
     const yaw = Math.atan2(siny_cosp, cosy_cosp);
 
     trackingData.headRotation = {
-      x: pitch,
-      y: yaw,
-      z: roll
+      x: -pitch, // Negate pitch to match VRM look (Up/Down)
+      y: -yaw,   // Negate yaw for Mirror effect
+      z: -roll   // Negate roll
     };
 
     // Face Position
