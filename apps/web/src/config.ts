@@ -23,10 +23,10 @@ export const THEME = {
   motifs: {
     // 川のmeander（蛇行）パターン
     meanderWave: 'cubic-bezier(0.45, 0.05, 0.55, 0.95)',
-    
+
     // 雪の粒子サイズ
     snowParticleSize: { min: 0.5, max: 2.5 },
-    
+
     // 玄武岩の六角形
     hexagonAngle: Math.PI / 3,
   },
@@ -38,7 +38,7 @@ export const CONFIG = {
     defaultModel: '/models/hakusan-avatar.vrm', // ファイル名修正(ハイフン)
     scale: 1.0,
     position: { x: 0, y: 0, z: 0 }, // アバターを地面に配置
-    
+
     // PBRレンダリング設定
     rendering: {
       toneMapping: 'ACESFilmic',
@@ -71,7 +71,7 @@ export const CONFIG = {
       blinkInterval: { min: 2.5, max: 5.0 }, // 秒
       blinkDuration: 0.12,                     // 秒
       smoothingFactor: 0.35,                   // EMA係数
-      
+
       // まばたきカーブ（easeInOutCubic）
       blinkCurve: (t: number) => {
         return t < 0.5
@@ -98,7 +98,7 @@ export const CONFIG = {
   tracking: {
     enabled: true,
     latencyTarget: 150, // ms（目標遅延）
-    
+
     // 補間設定
     interpolation: {
       position: 0.35,
@@ -109,7 +109,7 @@ export const CONFIG = {
 
   // ゲートウェイ接続
   gateway: {
-    url: 'ws://localhost:8080',
+    url: 'ws://127.0.0.1:8080', // localhostだとIPv6解決問題が起きる可能性があるためIP指定
     reconnectInterval: 3000, // ms
     maxReconnectAttempts: 10,
   },
@@ -117,7 +117,7 @@ export const CONFIG = {
   // 音声処理
   audio: {
     enabled: true,
-    
+
     // ボイスチェンジャー（ピッチ/フォルマント）
     voiceChanger: {
       enabled: false, // UI から切替
@@ -142,7 +142,7 @@ export const CONFIG = {
     serviceUrl: 'http://localhost:5000',
     streamUrl: 'ws://localhost:5000/stream',
 
-    
+
     // STT (Speech-to-Text)
     stt: {
       model: 'whisper-base',
@@ -155,7 +155,7 @@ export const CONFIG = {
       model: 'qwen2.5:7b-instruct',
       maxTokens: 150,  // 賢くなったので少し長めに
       temperature: 0.8,
-      
+
       // キャラクター設定
       characterPrompt: `あなたは白山の里山に住む、優しくて親しみやすい相棒です。
 言葉には「水」「流れ」「澄む」「峠」などの自然の比喩を控えめに使い、
@@ -174,7 +174,7 @@ export const CONFIG = {
   performance: {
     targetFPS: 30,
     adaptiveQuality: true,
-    
+
     // 品質プリセット
     quality: {
       high: {
@@ -199,7 +199,7 @@ export const CONFIG = {
   ui: {
     position: 'bottom-right', // 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
     theme: 'dark',            // 'dark' | 'light'
-    
+
     // 表示項目
     controls: {
       showAIToggle: true,
