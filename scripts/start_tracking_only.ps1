@@ -1,5 +1,5 @@
 # Start ONLY the Body/Face Tracker
-Write-Host "Starting Face Tracker (Face Priority Mode)..." -ForegroundColor Cyan
+Write-Host "Starting Face & Body Tracker (Stable Mode)..." -ForegroundColor Cyan
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
