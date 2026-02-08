@@ -248,9 +248,13 @@ export class AvatarSystem {
 
     // 体のトラッキング適用（最優先）
     if (data.body) {
-      this.hasBodyTracking = true;
-      this.lastBodyTrackingTime = Date.now();
-      this.applyBodyTracking(data.body);
+      // Check if data is valid (not all zeros)
+      const valid = data.body.shoulder?.left?.x != 0 || data.body.shoulder?.right?.x != 0;
+      if (valid) {
+        this.hasBodyTracking = true;
+        this.lastBodyTrackingTime = Date.now();
+        this.applyBodyTracking(data.body);
+      }
       // return; // ボディトラッキング時も顔のトラッキングを適用する (頭の回転など)
     }
 
@@ -304,7 +308,13 @@ export class AvatarSystem {
         // OpenSeeFace: X=Pitch, Y=Yaw, Z=Roll
         // Three.js: X=Pitch, Y=Yaw, Z=Roll (ただし回転順序で荒ぶる)
 
-        const pitch = THREE.MathUtils.degToRad(data.headRotation.x);
+        // 【修正】OpenSeeFaceから来る値が「180度（後ろ向き）」基準になっているため、
+        // 180度引いて「0度（正面）」基準に戻す補正を入れる
+        // 入力が -175 などの場合、+180 すると 5度（正面）になる
+        const rx = data.headRotation.x;
+        const correctedPitch = (Math.abs(rx) > 90) ? (rx + (rx > 0 ? -180 : 180)) : rx;
+
+        const pitch = THREE.MathUtils.degToRad(correctedPitch);
         const yaw = THREE.MathUtils.degToRad(data.headRotation.y);
         const roll = THREE.MathUtils.degToRad(data.headRotation.z);
 
@@ -377,47 +387,57 @@ export class AvatarSystem {
 
     // MediaPipe: x(0-1 左→右), y(0-1 上→下), z(0-1 奥→手前)
 
-    // 肩の回転(腕の動き) - 修正版: Y軸差分はZ回転(上げ下げ)に割り当てるべき
+    // ヘルパー: 数値変換 (文字列 '0.00' 対策)
+    const getVal = (v: any) => {
+      const n = Number(v);
+      return isNaN(n) ? 0 : n;
+    };
+
+    // 肩の回転(腕の動き)
     if (body.shoulder && body.elbow) {
+
       // 左肩 (LeftUpperArm)
       if (body.shoulder.left && body.elbow.left) {
-        const s = body.shoulder.left;
-        const e = body.elbow.left;
-        // NormalizedBoneNodeを使用
-        const bone = humanoid.getNormalizedBoneNode('leftUpperArm' as any);
-        if (bone) {
-          // Normalized座標系: Tポーズ(腕は+X方向)。+Yが上、+Zが後ろ
-          // 腕を下げる(+X -> -Y): -Z回転
+        const s = { x: getVal(body.shoulder.left.x), y: getVal(body.shoulder.left.y), z: getVal(body.shoulder.left.z) };
+        const e = { x: getVal(body.elbow.left.x), y: getVal(body.elbow.left.y), z: getVal(body.elbow.left.z) };
 
-          const dy = e.y - s.y; // 下に行くとプラス
-
-          // 腕を下げる: dyがプラスのとき。Z回転をマイナスにする
-          const rotZ = -(dy * 2.5);
-
-          // 基本姿勢(Aポーズ)からのオフセットとして適用
-          bone.rotation.set(0, 0, rotZ);
+        // データが全部0なら無視 (無効データ)
+        if (s.x === 0 && s.y === 0 && e.x === 0 && e.y === 0) {
+          // Invalid data, ignore
+        } else {
+          const bone = humanoid.getNormalizedBoneNode('leftUpperArm' as any);
+          if (bone) {
+            const dy = e.y - s.y; // 下に行くとプラス
+            const rotZ = -(dy * 2.5);
+            if (!isNaN(rotZ)) {
+              bone.rotation.set(0, 0, rotZ);
+            }
+          }
         }
       }
 
       // 右肩 (RightUpperArm)
       if (body.shoulder.right && body.elbow.right) {
-        const s = body.shoulder.right;
-        const e = body.elbow.right;
-        const bone = humanoid.getNormalizedBoneNode('rightUpperArm' as any);
-        if (bone) {
-          const dy = e.y - s.y;
+        const s = { x: getVal(body.shoulder.right.x), y: getVal(body.shoulder.right.y), z: getVal(body.shoulder.right.z) };
+        const e = { x: getVal(body.elbow.right.x), y: getVal(body.elbow.right.y), z: getVal(body.elbow.right.z) };
 
-          // 右腕(-X): 腕を下げる(-X -> -Y): +Z回転
-          const rotZ = (dy * 2.5);
-
-          bone.rotation.set(0, 0, rotZ);
+        if (s.x === 0 && s.y === 0 && e.x === 0 && e.y === 0) {
+          // Ignore
+        } else {
+          const bone = humanoid.getNormalizedBoneNode('rightUpperArm' as any);
+          if (bone) {
+            const dy = e.y - s.y;
+            const rotZ = (dy * 2.5);
+            if (!isNaN(rotZ)) {
+              bone.rotation.set(0, 0, rotZ);
+            }
+          }
         }
       }
     }
-
-    // 肘、手首などは一旦コメントアウトして、まずは「腕が下がる」ことを確認する
-    // 安定したら再度有効化する
   }
+
+
 
   /**
    * ボディトラッキングがない時の待機ポーズ（Tポーズ回避）
