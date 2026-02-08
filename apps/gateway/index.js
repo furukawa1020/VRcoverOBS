@@ -216,13 +216,17 @@ faceUdpServer.on('message', (msg, rinfo) => {
 // MediaPipe OSCメッセージハンドラ
 oscServerBody.on('message', (oscMsg) => {
   // /body/shoulder/left/position x y z
-  // アドレスをパースしてtrackingData.bodyに格納
+  // /face/rotation x y z
+  // /face/blendshapes ...
+
   const address = oscMsg.address;
   const args = oscMsg.args;
 
   try {
     const parts = address.split('/');
-    // example: ['', 'body', 'shoulder', 'left', 'position']
+    // parts: ['', 'body', ...] or ['', 'face', ...]
+
+    // Body Data
     if (parts.length >= 5 && parts[1] === 'body') {
       const part = parts[2]; // shoulder
       const side = parts[3]; // left
@@ -230,6 +234,40 @@ oscServerBody.on('message', (oscMsg) => {
       if (trackingData.body[part] && trackingData.body[part][side]) {
         trackingData.body[part][side] = { x: args[0], y: args[1], z: args[2] };
       }
+    }
+
+    // Face Data (from Holistic-based Python script)
+    else if (parts[1] === 'face') {
+      const type = parts[2];
+
+      if (type === 'rotation') {
+        // /face/rotation x y z
+        trackingData.headRotation = { x: args[0], y: args[1], z: args[2] };
+      }
+      else if (type === 'pos') {
+        // /face/pos x y z
+        trackingData.facePosition = { x: args[0], y: args[1], z: args[2] };
+      }
+      else if (type === 'blink') {
+        trackingData.blink = args[0];
+      }
+      else if (type === 'mouth') {
+        // /face/mouth open smile
+        if (args.length >= 2) {
+          trackingData.mouthOpen = args[0];
+          trackingData.mouthSmile = args[1];
+        } else {
+          trackingData.mouthOpen = args[0];
+        }
+      }
+      else if (type === 'eye') {
+        // /face/eye x y
+        trackingData.eyeX = args[0];
+        trackingData.eyeY = args[1];
+      }
+
+      trackingData.timestamp = Date.now();
+      trackingData.confidence = 0.9;
     }
 
     // OSCデータ受信時は即時ブロードキャストするか、一定間隔にするか
