@@ -244,7 +244,7 @@ export class AvatarSystem {
     if (data.body) {
       this.hasBodyTracking = true;
       this.applyBodyTracking(data.body);
-      return; // ボディトラッキング時は顔のトラッキングをスキップ
+      // return; // ボディトラッキング時も顔のトラッキングを適用する (頭の回転など)
     }
 
     const proxy = this.vrm.expressionManager;
