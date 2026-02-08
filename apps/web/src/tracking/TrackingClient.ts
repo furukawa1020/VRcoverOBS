@@ -42,8 +42,8 @@ export class TrackingClient {
             }
 
             // デバッグログ（face データの受信確認 - 間引き）
-            if (data.face && Math.random() < 0.05) {
-              console.log('[TrackingClient] 📥 Face data received', data.face.rotation);
+            if (data.headRotation && Math.random() < 0.05) {
+              console.log('[TrackingClient] 📥 Face data received', data.headRotation);
             }
 
             this.emit('tracking-data', data);
