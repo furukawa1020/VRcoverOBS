@@ -261,10 +261,41 @@ console.log(`
 ╔════════════════════════════════════════╗
 ║  VRabater Gateway Server (全身対応)    ║
 ╠════════════════════════════════════════╣
-║  WebSocket: ws://localhost:${WS_PORT}      ║
+║  WebSocket: ws://0.0.0.0:${WS_PORT}        ║
 ║  UDP Face:  0.0.0.0:${FACE_UDP_PORT}       ║
 ║  OSC Body:  0.0.0.0:${BODY_OSC_PORT}       ║
 ╚════════════════════════════════════════╝
 
 ⏳ トラッキングシステムの起動を待機中...
 `);
+
+// ----------------------------------------------------------------
+// サーバー起動処理 (ここから下が消えていたので復元)
+// ----------------------------------------------------------------
+
+// 1. OpenSeeFace UDP (顔トラッキング)
+try {
+  faceUdpServer.bind(FACE_UDP_PORT, '0.0.0.0');
+} catch (e) {
+  console.error('❌ Face UDP Bind Error:', e);
+}
+
+// 2. MediaPipe OSC (ボディトラッキング)
+// oscServerBodyは宣言時に自動でopenされるか、ここで明示的にopenが必要か確認
+if (!oscServerBody.portOpen) {
+  try {
+    oscServerBody.open();
+  } catch (e) {
+    console.error("❌ OSC Open Error:", e);
+  }
+}
+
+oscServerBody.on("error", function (error) {
+  console.log("❌ OSC Error:", error);
+});
+
+// 3. WebSocket Server (ブラウザ通信)
+// ここが一番重要！ 0.0.0.0で待ち受けないと外部から繋がらない
+server.listen(WS_PORT, '0.0.0.0', () => {
+  console.log(`✅ WebSocket Server IS LISTENING on 0.0.0.0:${WS_PORT}`);
+});

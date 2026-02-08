@@ -3,89 +3,12 @@
 > **非公式・商用利用可 / GPUなし・無料運用 / AI人格切替可能 / Zoom等どこでも使える**
 
 白山手取川ジオパークの自然美をモチーフにした、めちゃくちゃかわいいWebベース3Dアバターシステムです。
+# VRabater (Zoom/Discord用アバターシステム)
+
+白山（ハクサン）をモチーフにした、Webベースの3Dアバターシステムです。
+**OBSなどの配信ソフトを使わずに、直接ZoomやDiscordでアバターを表示できます。**
 
 ## ✨ 特徴
-
-- 🎭 **VRMアバター** - three.js + three-vrm による高品位PBRレンダリング
-- 📹 **Webカメラトラッキング** - OpenSeeFaceによるリアルタイム表情追従（CPU動作）
-- 🎤 **音声変換** - WebAudioベースのピッチ/フォルマント変換
-- 🤖 **AI人格切替** - Ollama(ローカルLLM) + Whisper + Piper による対話機能
-- 💎 **白山デザイン** - 雪白・翠青・玄岩・木肌の4色とモチーフ
-- 🌐 **どこでも使える** - Zoom/Discord/OBS対応
-- 💰 **完全無料** - クラウドコスト0円、すべてローカル処理
-
-## 🎨 デザインコンセプト
-
-### カラーパレット
-- **雪白** (#F7F7F7) - 白山の雪
-- **翠青** (#1E6F68) - 手取川の碧
-- **玄岩** (#2E2B2B) - 火山岩の重み
-- **木肌** (#A67C52) - 里山の温もり
-
-### モチーフ
-- 川のmeander（蛇行）→ 髪のライン
-- 雪の粒子 → パーティクルエフェクト
-- 玄武岩の六角形 → アクセサリーパターン
-- 伏流水の透明感 → PBRマテリアル設定
-
-## 🚀 クイックスタート
-
-### 必要環境
-- Node.js 18以上
-- Python 3.10以上（AI機能用）
-- Webカメラ
-- マイク
-
-### 1. インストール
-
-```powershell
-# 依存関係のインストール
-npm install
-
-# Web UI
-cd apps/web
-npm install
-
-# Gateway
-cd ../gateway
-npm install
-
-# AI サービス（Python）
-cd ../ai
-pip install -r requirements.txt
-```
-
-### 2. モデルのセットアップ
-
-```powershell
-# Ollama のインストール（初回のみ）
-# https://ollama.ai からダウンロード
-
-# LLMモデルのダウンロード
-ollama pull qwen2.5:3b-instruct-q4_K_M
-
-# Whisper モデル（STT）
-python apps/ai/download_models.py
-
-# Piper 音声モデル（TTS）
-python apps/ai/download_piper.py
-```
-
-### 3. 起動
-
-```powershell
-# 全サービス一括起動
-npm run dev
-
-# または個別起動
-npm run dev:web      # Web UI (http://localhost:5173)
-npm run dev:gateway  # WebSocket Gateway (ws://localhost:8080)
-python apps/ai/main.py  # AI サービス
-```
-
-### 4. OpenSeeFaceの起動
-
-```powershell
 # OpenSeeFaceを別途ダウンロード後
 python facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1
 ```
