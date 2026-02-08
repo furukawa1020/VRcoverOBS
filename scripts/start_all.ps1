@@ -30,11 +30,11 @@ Write-Host "3. Starting AI Service..." -ForegroundColor Yellow
 $AIDir = Join-Path $ProjectRoot "apps\ai"
 Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'AI Service'; cd '$AIDir'; python main.py"
 
-# 4. OpenSeeFace (Face Tracking) - Disabled (Using MediaPipe Holistic)
-# Write-Host "4. Starting OpenSeeFace..." -ForegroundColor Yellow
-# $OSFDir = Join-Path $ProjectRoot "tools\OpenSeeFace"
+# 4. OpenSeeFace (Face Tracking)
+Write-Host "4. Starting OpenSeeFace..." -ForegroundColor Yellow
+$OSFDir = Join-Path $ProjectRoot "tools\OpenSeeFace"
 # Note: OSF needs to run from project root or tools dir usually, but let's try explicit path
-# Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'Face Tracker'; cd '$ProjectRoot'; python tools/OpenSeeFace/facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1"
+Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'Face Tracker'; cd '$ProjectRoot'; python tools/OpenSeeFace/facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1"
 
 Start-Sleep -Seconds 2
 

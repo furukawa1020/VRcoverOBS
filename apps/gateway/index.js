@@ -285,6 +285,27 @@ oscServerBody.on('error', (error) => {
 
 oscServerBody.open();
 
+// Simple hand position generator (rule-based, no camera needed)
+// Generates hand positions relative to face/head position
+let handAnimTime = 0;
+setInterval(() => {
+  handAnimTime += 0.016; // ~60fps
+
+  // Generate simple idle hand movement
+  // Positions are in normalized space (0-1)
+  const idleWave = Math.sin(handAnimTime) * 0.05; // Small oscillation
+
+  // Default positions: hands at sides, slightly forward
+  trackingData.body.shoulder.left = { x: 0.3, y: 0.5, z: 0 };
+  trackingData.body.shoulder.right = { x: 0.7, y: 0.5, z: 0 };
+
+  trackingData.body.elbow.left = { x: 0.25, y: 0.65 + idleWave, z: 0 };
+  trackingData.body.elbow.right = { x: 0.75, y: 0.65 + idleWave, z: 0 };
+
+  trackingData.body.wrist.left = { x: 0.2, y: 0.8 + idleWave * 2, z: 0 };
+  trackingData.body.wrist.right = { x: 0.8, y: 0.8 + idleWave * 2, z: 0 };
+
+}, 16); // ~60fps
 
 function broadcastToClients(data) {
   const message = JSON.stringify(data);
