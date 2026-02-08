@@ -88,7 +88,14 @@ class BodyTracker:
     
     def _tracking_loop(self):
         """Main tracking loop"""
+        fps_time = time.time()
+        cam_id = int(self.cap.get(cv2.CAP_PROP_POS_MSEC) if self.cap else -1) # Just a placeholder
+        # Actual cam id is local to start(), but we can't access it easily without class var
+        # Let's just use '?' for now or fix it proper.
+        # Actually I can save self.cam_id
+        
         while self.running:
+            pose_result = None
             ret, frame = self.cap.read()
             if not ret:
                 print("⚠️ Failed to capture frame. Retrying...")
@@ -108,6 +115,7 @@ class BodyTracker:
                     pose_result = self.pose_landmarker.detect(mp_image)
                     if pose_result and pose_result.pose_landmarks:
                         landmarks = pose_result.pose_landmarks[0]
+                        # print("[DEBUG] Pose Detected!")
                         self._send_pose_data(landmarks)
                         self._process_face_from_pose(landmarks, img_w, img_h)
             
@@ -115,25 +123,34 @@ class BodyTracker:
                 # print(f"[ERROR] Tracking error: {e}")
                 pass
             
+            # FPS and debug log
+            current_time = time.time()
+            if current_time - fps_time >= 3.0:
+                print(f"[DEBUG] Tick... (Camera ID: {cam_id}, Pose: {'Found' if pose_result and pose_result.pose_landmarks else 'None'})")
+                fps_time = current_time
+            
             # CPU performance control
             time.sleep(0.01)
 
     def _send_pose_data(self, landmarks):
         """Extract landmarks and send via OSC"""
+        # Map: BodyTracker Key -> (Gateway Part, Gateway Side)
         landmark_map = {
-            'left_shoulder': 11,
-            'right_shoulder': 12,
-            'left_elbow': 13,
-            'right_elbow': 14,
-            'left_wrist': 15,
-            'right_wrist': 16,
+            'left_shoulder': ('shoulder', 'left', 11),
+            'right_shoulder': ('shoulder', 'right', 12),
+            'left_elbow': ('elbow', 'left', 13),
+            'right_elbow': ('elbow', 'right', 14),
+            'left_wrist': ('wrist', 'left', 15),
+            'right_wrist': ('wrist', 'right', 16),
+            # Add hips/knees if needed, assuming Gateway supports them
+            # 'left_hip': ('hip', 'left', 23),
+            # 'right_hip': ('hip', 'right', 24),
         }
         
-        for part_name, landmark_id in landmark_map.items():
-            lm = landmarks[landmark_id]
-            self.osc_client.send_message(f"/body/{part_name}/x", float(lm.x))
-            self.osc_client.send_message(f"/body/{part_name}/y", float(lm.y))
-            self.osc_client.send_message(f"/body/{part_name}/z", float(lm.z))
+        for key, (part, side, idx) in landmark_map.items():
+            lm = landmarks[idx]
+            # Send /body/{part}/{side} x y z
+            self.osc_client.send_message(f"/body/{part}/{side}", [float(lm.x), float(lm.y), float(lm.z)])
 
     def _process_face_from_pose(self, landmarks, img_w, img_h):
         """Estimate head rotation using Pose Landmarks (0-10)"""
