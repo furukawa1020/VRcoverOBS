@@ -3,14 +3,6 @@ VRabater AI Service
 ローカルLLM (Ollama) + STT (Whisper/Vosk) + TTS (Piper) + Body Tracking (MediaPipe)
 """
 
-import sys
-import io
-
-# Fix Windows console encoding for Unicode characters
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-
 import os
 import json
 import time
@@ -345,14 +337,14 @@ def check_ollama_status():
 
 if __name__ == '__main__':
     print("""
-==========================================
-  VRabater AI Service
-==========================================
-  STT: Whisper (Local)
-  LLM: Ollama
-  TTS: gTTS (Google Text-to-Speech)
-  Body: MediaPipe Holistic
-==========================================
+╔════════════════════════════════════════╗
+║  VRabater AI Service                   ║
+╠════════════════════════════════════════╣
+║  STT: Whisper (ローカル)               ║
+║  LLM: Ollama                           ║
+║  TTS: gTTS (Google Text-to-Speech)     ║
+║  Body: MediaPipe                       ║
+╚════════════════════════════════════════╝
     """)
     
     # Whisper初期化
@@ -367,21 +359,24 @@ if __name__ == '__main__':
         print("   起動方法: ollama serve")
     
     # Body Tracker初期化 & 起動
-    # DISABLED: MediaPipe compatibility issues on Windows
-    # Re-enabling OpenSeeFace for face tracking instead
-    # print("🎥 Body Tracking 初期化中...")
-    # try:
-    #     body_tracker = BodyTracker()
-    #     if body_tracker.start():
-    #          print("✅ Body Tracking 起動完了")
-    #     else:
-    #          print("⚠️ Body Tracking 起動失敗 (カメラ接続エラーの可能性)")
-    #          body_tracker = None
-    # except Exception as e:
-    #     print(f"⚠️ Body Tracking エラー: {e}")
-    #     body_tracker = None
-    
-    body_tracker = None  # Disabled for now
+    print("🎥 Body Tracking 初期化中...")
+    try:
+        # Body Trackerを起動 (※ OpenSeeFaceとカメラが競合するため、デフォルトではOFFにします)
+        # ユーザー要望により有効化: カメラ競合に注意
+        body_tracker = BodyTracker()
+        if body_tracker.start():
+             print("✅ Body Tracking 起動完了")
+        else:
+             print("⚠️ Body Tracking 起動失敗 (カメラ接続エラーの可能性)")
+             body_tracker = None
+
+    except Exception as e:
+        print(f"⚠️ Body Tracking エラー: {e}")
+        body_tracker = None
+
+    except Exception as e:
+        print(f"⚠️ Body Tracking エラー: {e}")
+        body_tracker = None
     
     # Flask起動
     print("\n🚀 AIサービス起動: http://localhost:5000\n")
