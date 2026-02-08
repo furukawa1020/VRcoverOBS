@@ -29,30 +29,39 @@ export class VRoidAvatar {
 
     try {
       const gltf = await loader.loadAsync(modelPath);
-      
+
       this.vrm = gltf.userData.vrm as VRM;
-      
+
       if (!this.vrm) {
         throw new Error('VRMデータが見つかりません');
       }
 
       // VRMモデルを回転調整
       VRMUtils.rotateVRM0(this.vrm);
-      
+
       this.group.add(this.vrm.scene);
-      
+
+      // 初期回転を設定(正面向き)
       // 初期回転を設定(正面向き)
       this.group.rotation.y = -Math.PI / 2; // -90度(右向き→前向き)
-      console.log('[VRoidAvatar] 🔄 回転設定:', {
-        y: this.group.rotation.y,
-        degrees: (this.group.rotation.y * 180 / Math.PI).toFixed(1) + '度'
-      });
-      
+
+      // Tポーズ回避：腕を下げる (自然な立ち姿)
+      const humanoid = this.vrm.humanoid;
+      if (humanoid) {
+        const leftArm = humanoid.getNormalizedBoneNode('leftUpperArm');
+        const rightArm = humanoid.getNormalizedBoneNode('rightUpperArm');
+        if (leftArm) leftArm.rotation.z = Math.PI / 3;  // 60度下げる
+        if (rightArm) rightArm.rotation.z = -Math.PI / 3; // 60度下げる
+      }
+
+      console.log('[VRoidAvatar] 🔄 回転・ポーズ設定完了');
+
+
       // アニメーションミキサー
       this.mixer = new THREE.AnimationMixer(this.vrm.scene);
-      
+
       console.log('[VRoidAvatar] ✨ VRMモデル読み込み完了！めちゃかわいい！');
-      
+
     } catch (error) {
       console.error('[VRoidAvatar] ❌ モデル読み込みエラー:', error);
       throw error;
@@ -67,7 +76,7 @@ export class VRoidAvatar {
 
     // VRMの更新
     this.vrm.update(deltaTime);
-    
+
     // アニメーション更新
     if (this.mixer) {
       this.mixer.update(deltaTime);
@@ -98,7 +107,7 @@ export class VRoidAvatar {
 
     // まばたきアニメーション
     expressionManager.setValue('blink', 1.0);
-    
+
     setTimeout(() => {
       expressionManager?.setValue('blink', 0.0);
     }, 150);
@@ -109,7 +118,7 @@ export class VRoidAvatar {
    */
   setExpression(expressionName: string, value: number) {
     if (!this.vrm?.expressionManager) return;
-    
+
     this.vrm.expressionManager.setValue(expressionName, value);
   }
 
@@ -139,7 +148,7 @@ export class VRoidAvatar {
       console.log('[VRoidAvatar] expressionManagerがありません');
       return;
     }
-    
+
     console.log('[VRoidAvatar] 口開き:', value);
     this.vrm.expressionManager.setValue('aa', value);
   }
@@ -149,7 +158,7 @@ export class VRoidAvatar {
    */
   setBodyRotation(boneName: string, rotation: THREE.Euler) {
     if (!this.vrm) return;
-    
+
     const bone = this.vrm.humanoid.getNormalizedBoneNode(boneName as any);
     if (bone) {
       bone.rotation.copy(rotation);
@@ -161,7 +170,7 @@ export class VRoidAvatar {
    */
   setLimbPosition(boneName: string, position: THREE.Vector3) {
     if (!this.vrm) return;
-    
+
     const bone = this.vrm.humanoid.getNormalizedBoneNode(boneName as any);
     if (bone) {
       // IK的な制御が必要な場合はここで実装

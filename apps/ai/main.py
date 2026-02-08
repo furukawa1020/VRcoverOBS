@@ -361,12 +361,19 @@ if __name__ == '__main__':
     # Body Tracker初期化 & 起動
     print("🎥 Body Tracking 初期化中...")
     try:
-        body_tracker = BodyTracker()
-        if body_tracker.start():
-            print("✅ Body Tracking 起動完了")
-        else:
-            print("⚠️ Body Tracking 起動失敗 (カメラ接続エラー)")
-            body_tracker = None
+        # Body Trackerを起動 (※ OpenSeeFaceとカメラが競合するため、デフォルトではOFFにします)
+        pass
+        # body_tracker = BodyTracker()
+        # if body_tracker.start():
+
+    # 必要に応じて有効化するか、別のカメラIDを指定してください
+    # body_tracker = BodyTracker()
+    # if body_tracker.start():
+    #     print("✅ Body Tracking 起動完了")
+    # else:
+    #     print("⚠️ Body Tracking 起動失敗 (カメラ接続エラー)")
+    #     body_tracker = None
+
     except Exception as e:
         print(f"⚠️ Body Tracking エラー: {e}")
         body_tracker = None

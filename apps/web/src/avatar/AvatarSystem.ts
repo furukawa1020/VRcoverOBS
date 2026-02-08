@@ -63,9 +63,10 @@ export class AvatarSystem {
     const container = document.getElementById('canvas-container')!;
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 20);
-    // 前方から見る(通常位置)
-    this.camera.position.set(0, 0.8, 2.0);
-    this.camera.lookAt(0, 0.7, 0); // アバターの顔を見る
+    // 前方から見る(バストアップ)
+    this.camera.position.set(0, 1.3, 0.8);
+    this.camera.lookAt(0, 1.25, 0); // アバターの顔の少し下を見る
+
 
     // レンダラーの初期化（PBR設定）
     this.renderer = new THREE.WebGLRenderer({

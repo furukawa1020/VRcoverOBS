@@ -22,10 +22,15 @@ Start-Sleep -Seconds 2
 Write-Host "3. Starting AI Service..." -ForegroundColor Yellow
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'AI Service'; cd apps\ai; python main.py"
 
-Start-Sleep -Seconds 3
+# 4. OpenSeeFace (Face Tracking)
+Write-Host "4. Starting OpenSeeFace..." -ForegroundColor Yellow
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Face Tracker'; python tools/OpenSeeFace/facetracker.py -c 0 -W 640 -H 480 --discard-after 0 --scan-every 0 --no-3d-adapt 1"
+
+Start-Sleep -Seconds 2
 
 Write-Host ""
 Write-Host "✅ All services started!" -ForegroundColor Green
+
 Write-Host ""
 Write-Host "📋 Access Points:" -ForegroundColor White
 Write-Host "   Web UI:  http://localhost:5173" -ForegroundColor Cyan
