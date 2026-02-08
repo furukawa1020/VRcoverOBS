@@ -459,9 +459,54 @@ export class AvatarSystem {
           const bone = humanoid.getNormalizedBoneNode('leftUpperArm' as any);
           if (bone) {
             const dy = e.y - s.y; // 下に行くとプラス
+            const dz = e.z - s.z; // 前に行くとマイナス? (MediaPipe Z: Close is negative)
+
+            // Z回転（腕の上げ下げ）: Y差分
             const rotZ = -(dy * 2.5);
+            // Y回転（腕の前後）: Z差分 (前に行くとY回転プラス?)
+            // VRM LeftUpperArm: +Y rotates forward? No, check resetToIdlePose.
+            // resetToIdlePose: Y=0.3 (Forward). So +Y is Forward.
+            // dz is negative when forward. So -dz.
+            const rotY = -(dz * 2.0);
+
             if (!isNaN(rotZ)) {
-              bone.rotation.set(0, 0, rotZ);
+              bone.rotation.set(0, rotY, rotZ);
+            }
+          }
+
+          // 前腕 (LeftLowerArm) & 手首 (LeftHand)
+          if (body.wrist && body.wrist.left) {
+            const w = { x: getVal(body.wrist.left.x), y: getVal(body.wrist.left.y), z: getVal(body.wrist.left.z) };
+            const lowerArm = humanoid.getNormalizedBoneNode('leftLowerArm');
+
+            if (lowerArm && (w.x !== 0 || w.y !== 0)) {
+              // 肘の曲げ: 上腕ベクトルと前腕ベクトルのなす角...だが簡易的にY差分で見る
+              // 手首が肘より上にあれば曲げる
+              // あるいは距離で判定
+
+              // 簡易実装: 手首が高い位置にある(=Yが小さい)ほど曲げる
+              // e.y (Elbow Y) - w.y (Wrist Y). If positive, wrist is higher.
+              const diffY = e.y - w.y;
+              // 曲げ (Y軸回転? Normalized LowerArm: Y is axis?)
+              // resetToIdlePose used Y-axis rotation for bend.
+              // Bend ranges from 0 (straight) to 2.5 (fully bent).
+              let bend = diffY * 4.0;
+              if (bend < 0) bend = 0;
+              if (bend > 2.5) bend = 2.5;
+
+              lowerArm.rotation.set(0, bend, 0);
+
+              // --- ピースサイン判定 (Z軸) ---
+              // 手首がカメラに近い (Z < -0.3 くらい？) 場合にピース
+              // 基準: 肩のZ位置からどれくらい前か
+              const distZ = w.z - s.z;
+              // console.log(`LeftHand Z-Dist: ${distZ.toFixed(2)}`);
+
+              if (distZ < -0.2) { // 肩より20cm以上前
+                this.setFingerPose('left', 'peace');
+              } else {
+                this.setFingerPose('left', 'neutral');
+              }
             }
           }
         }
@@ -478,13 +523,98 @@ export class AvatarSystem {
           const bone = humanoid.getNormalizedBoneNode('rightUpperArm' as any);
           if (bone) {
             const dy = e.y - s.y;
-            const rotZ = (dy * 2.5);
+            const dz = e.z - s.z;
+
+            const rotZ = (dy * 2.5); // 右はプラスで下がる
+            const rotY = (dz * 2.0); // 右は...符号反転? resetToIdlePose: -0.3 (Forward). So -dz.
+
             if (!isNaN(rotZ)) {
-              bone.rotation.set(0, 0, rotZ);
+              bone.rotation.set(0, rotY, rotZ);
+            }
+          }
+
+          // 前腕 (RightLowerArm)
+          if (body.wrist && body.wrist.right) {
+            const w = { x: getVal(body.wrist.right.x), y: getVal(body.wrist.right.y), z: getVal(body.wrist.right.z) };
+            const lowerArm = humanoid.getNormalizedBoneNode('rightLowerArm');
+
+            if (lowerArm && (w.x !== 0 || w.y !== 0)) {
+              const diffY = e.y - w.y;
+              let bend = diffY * 4.0;
+              if (bend < 0) bend = 0;
+              if (bend > 2.5) bend = 2.5;
+
+              // 右肘: マイナスで曲がる (resetToIdlePose: -1.5)
+              lowerArm.rotation.set(0, -bend, 0);
+
+              // --- ピースサイン判定 (Z軸) ---
+              const distZ = w.z - s.z;
+              if (distZ < -0.2) {
+                this.setFingerPose('right', 'peace');
+              } else {
+                this.setFingerPose('right', 'neutral');
+              }
             }
           }
         }
       }
+    }
+
+  /**
+   * 指のポーズを設定
+   */
+  private setFingerPose(hand: 'left' | 'right', pose: 'peace' | 'neutral') {
+    if (!this.vrm || !this.vrm.humanoid) return;
+
+    const setRot = (boneName: string, x: number, y: number, z: number) => {
+      const bone = this.vrm!.humanoid!.getNormalizedBoneNode(boneName as any);
+      if (bone) bone.rotation.set(x, y, z);
+    };
+
+    const prefix = hand === 'left' ? 'left' : 'right';
+    // 符号調整: 右手・左手で曲げ方向が違う場合があるが、
+    // VRM Normalized: +Z is usually Curl (Local) or -Z?
+    // Usually +Z or -Z rotates the finger inward (curl).
+    // Let's assume +Z curls (Standard Unity Humanoid).
+    // Actually VRM 1.0 Normalized:
+    // +X is Twist?
+    // Let's try Z-axis curl. If it bends backwards, flip sign.
+
+    const curl = (hand === 'left') ? -1.0 : 1.0; // 試行錯誤: 左はマイナスで曲がる?
+
+    if (pose === 'peace') {
+      // 人差し指・中指: 伸ばす (0)
+      setRot(`${prefix}IndexProximal`, 0, 0, 0);
+      setRot(`${prefix}IndexIntermediate`, 0, 0, 0);
+      setRot(`${prefix}IndexDistal`, 0, 0, 0);
+
+      setRot(`${prefix}MiddleProximal`, 0, 0, 0);
+      setRot(`${prefix}MiddleIntermediate`, 0, 0, 0);
+      setRot(`${prefix}MiddleDistal`, 0, 0, 0);
+
+      // 薬指・小指: 曲げる
+      const c = -Math.PI / 1.5; // 深く曲げる (Left: Negative, Right: Positive?)
+      // VRMの指曲げ軸: Z軸が多いが、Normalizedではリグによる
+      // 一般的にZ軸回転。
+      // 左手: -Zで曲がる? 右手: +Zで曲がる?
+
+      // Try Z rotation
+      setRot(`${prefix}RingProximal`, 0, 0, curl * 1.5);
+      setRot(`${prefix}RingIntermediate`, 0, 0, curl * 1.5);
+      setRot(`${prefix}LittleProximal`, 0, 0, curl * 1.5);
+      setRot(`${prefix}LittleIntermediate`, 0, 0, curl * 1.5);
+
+      // 親指: 曲げる
+      setRot(`${prefix}ThumbProximal`, 0, curl * 0.5, 0); // 親指は軸が違うかも
+      setRot(`${prefix}ThumbIntermediate`, 0, curl * 0.5, 0);
+    } else {
+      // Neutral: 軽く曲げる (自然に)
+      const c = curl * 0.2;
+      ['Index', 'Middle', 'Ring', 'Little'].forEach(finger => {
+        setRot(`${prefix}${finger}Proximal`, 0, 0, c);
+        setRot(`${prefix}${finger}Intermediate`, 0, 0, c);
+      });
+      setRot(`${prefix}ThumbProximal`, 0, c, 0);
     }
   }
 
