@@ -490,21 +490,17 @@ export class AvatarSystem {
         } else {
           const bone = humanoid.getNormalizedBoneNode('leftUpperArm' as any);
           if (bone) {
-            const dy = e.y - s.y; // 下に行くとプラス
-            const dz = e.z - s.z; // 前に行くとマイナス? (MediaPipe Z: Close is negative)
+            // Vector-based alignment (Fixes 'Arm Behind' & 'Twist')
+            const vUpperMP = new THREE.Vector3(e.x - s.x, e.y - s.y, e.z - s.z).normalize();
+            // MP(x, y, z) -> VRM(x, -y, -z) mapping confirmed for consistency
+            const vUpperVRM = new THREE.Vector3(vUpperMP.x, -vUpperMP.y, -vUpperMP.z);
 
-            // Z回転（腕の上げ下げ）: Y差分
-            const rotZ = -(dy * 2.0); // 係数を少し下げる (2.5 -> 2.0)
-            // Y回転（腕の前後）: Z差分
-            // 修正: 前に出すと後ろに行く問題を再修正 (符号反転)
-            // Left: +Y is Forward. dz is negative when forward.
-            // So we need Positive result from Negative dz. -> -dz
-            const rotY = -(dz * 2.5);
+            // Left Arm T-Pose Direction is +X
+            const tPoseLeft = new THREE.Vector3(1, 0, 0);
 
-            if (!isNaN(rotZ)) {
-              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY, rotZ));
-              this.setTargetRotation('leftUpperArm', q);
-            }
+            // Calculate shortest rotation from T-Pose to Target
+            const q = new THREE.Quaternion().setFromUnitVectors(tPoseLeft, vUpperVRM);
+            this.setTargetRotation('leftUpperArm', q);
           }
 
           // 前腕 (LeftLowerArm) & 手首 (LeftHand)
@@ -569,18 +565,36 @@ export class AvatarSystem {
         } else {
           const bone = humanoid.getNormalizedBoneNode('rightUpperArm' as any);
           if (bone) {
-            const dy = e.y - s.y;
-            const dz = e.z - s.z;
+            // VRM Space Conversion
+            const vUpperMP = new THREE.Vector3(e.x - s.x, e.y - s.y, e.z - s.z);
+            const vLowerMP = new THREE.Vector3(
+              (getVal(body.wrist?.right?.x) || e.x) - e.x,
+              (getVal(body.wrist?.right?.y) || e.y) - e.y,
+              (getVal(body.wrist?.right?.z) || e.z) - e.z
+            );
 
-            const rotZ = (dy * 2.0); // 右はプラスで下がる (2.5 -> 2.0)
-            // Right: -Y is Forward. dz is negative when forward.
-            // So we need Negative result from Negative dz. -> +dz
-            const rotY = (dz * 2.5);
+            const vUpper = new THREE.Vector3(vUpperMP.x, -vUpperMP.y, -vUpperMP.z).normalize();
+            const vLower = new THREE.Vector3(vLowerMP.x, -vLowerMP.y, -vLowerMP.z).normalize();
 
-            if (!isNaN(rotZ)) {
-              const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY, rotZ));
-              this.setTargetRotation('rightUpperArm', q);
+            // 1. Dir Alignment (Right Arm T-Pose: -X)
+            const tPoseDir = new THREE.Vector3(-1, 0, 0);
+            const qDir = new THREE.Quaternion().setFromUnitVectors(tPoseDir, vUpper);
+
+            // 2. Plane Twist Alignment
+            let vPlaneNormal = new THREE.Vector3().crossVectors(vUpper, vLower).normalize();
+            if (vPlaneNormal.lengthSq() < 0.01) {
+              vPlaneNormal.crossVectors(vUpper, new THREE.Vector3(0, 1, 0)).normalize();
             }
+
+            // For Right Arm, if Up is +Y, let's try aligning -Y to Normal or something?
+            // Actually, symmetry suggests similar logic.
+            const currentY = new THREE.Vector3(0, 1, 0).applyQuaternion(qDir);
+
+            // Fix twist
+            const qTwist = new THREE.Quaternion().setFromUnitVectors(currentY, vPlaneNormal);
+            const qFinal = qTwist.multiply(qDir);
+
+            this.setTargetRotation('rightUpperArm', qFinal);
           }
 
           // 前腕 (RightLowerArm)
