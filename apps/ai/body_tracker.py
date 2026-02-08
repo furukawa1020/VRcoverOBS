@@ -1,15 +1,5 @@
-"""
-MediaPipe Holistic Tracking (Body + Face)
-Replaces OpenSeeFace for single-camera setups.
-"""
-
 import os
 import sys
-
-# Fix MediaPipe path issue
-venv_path = os.path.dirname(sys.executable)
-site_packages = os.path.join(venv_path, 'Lib', 'site-packages')
-mediapipe_path = os.path.join(site_packages, 'mediapipe')
 
 # Set environment variable for MediaPipe
 os.environ['MEDIAPIPE_DISABLE_GPU'] = '1'
