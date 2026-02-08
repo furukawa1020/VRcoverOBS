@@ -41,7 +41,23 @@ export class AvatarSystem {
   async init() {
     // シーンの初期化
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1E6F68); // 翠青（手取川の色）
+
+    // URLパラメータで背景指定 (?bg=transparent|green|blue|snow)
+    const params = new URLSearchParams(window.location.search);
+    const bgParam = params.get('bg');
+
+    if (bgParam === 'transparent') {
+      this.scene.background = null;
+    } else if (bgParam === 'green') {
+      this.scene.background = new THREE.Color(0x00FF00);
+    } else if (bgParam === 'blue') {
+      this.scene.background = new THREE.Color(0x0000FF);
+    } else if (bgParam === 'snow') {
+      this.scene.background = new THREE.Color(THEME.colors.snowWhite);
+    } else {
+      this.scene.background = new THREE.Color(0x1E6F68); // デフォルト: 翠青
+    }
+
 
     // カメラの初期化
     const container = document.getElementById('canvas-container')!;
