@@ -556,7 +556,7 @@ export class AvatarSystem {
             // Y-axis = Z cross X (orthogonalized Up)
 
             const xAxis = vDir.clone();
-            let zAxis = new THREE.Vector3().crossVectors(xAxis, upConstraint).normalize();
+            let zAxis = new THREE.Vector3().crossVectors(upConstraint, xAxis).normalize();
 
             // Handle edge case: arm pointing straight up/down
             if (zAxis.lengthSq() < 0.001) {
@@ -675,7 +675,7 @@ export class AvatarSystem {
 
             // Build Rotation Matrix for Right Arm (bone is -X axis)
             const xAxis = vDir.clone().negate(); // Bone points -X, so -vDir
-            let zAxis = new THREE.Vector3().crossVectors(xAxis, upConstraint).normalize();
+            let zAxis = new THREE.Vector3().crossVectors(upConstraint, xAxis).normalize();
 
             if (zAxis.lengthSq() < 0.001) {
               zAxis.set(0, 0, 1);
