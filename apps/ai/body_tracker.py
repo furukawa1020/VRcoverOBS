@@ -156,8 +156,6 @@ class BodyTracker:
                 time.sleep(1.0)
                 import traceback
                 traceback.print_exc()
-            else:
-                print("[STATUS] Searching for body...")
             
             # CPU performance control
             time.sleep(0.01)
