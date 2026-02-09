@@ -153,7 +153,16 @@ class BodyTracker:
                 time.sleep(1.0)
                 import traceback
                 traceback.print_exc()
-            
+            else:
+                 # Debug: Save snapshot to web public folder to verify camera view
+                 if frame_count % 60 == 0:
+                     try:
+                         snap_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web", "public", "snap.jpg"))
+                         cv2.imwrite(snap_path, frame)
+                         print(f"[DEBUG] Snapshot saved to: {snap_path}")
+                     except Exception as e:
+                         print(f"[ERROR] Failed to save snapshot: {e}")
+
             # CPU performance control
             time.sleep(0.01)
 
