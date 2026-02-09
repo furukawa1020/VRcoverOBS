@@ -155,9 +155,9 @@ class BodyTracker:
                         self.search_counter = 0
                     
                     self.search_counter += 1
-                    # ~150 frames is approx 5-6 seconds at 25-30fps
-                    if self.search_counter > 150:
-                        print(f"[WARN] No body found for 5+ seconds. Switching camera from ID {self.camera_id}...")
+                    # ~60 frames is approx 2-3 seconds at 30fps (or 6s at 10fps)
+                    if self.search_counter > 60:
+                        print(f"[WARN] No body found for a while. Switching camera from ID {self.camera_id}...")
                         self.cap.release()
                         self.camera_id = (self.camera_id + 1) % 4 # Cycle 0-3
                         print(f"[INFO] Trying Camera ID {self.camera_id}...")
