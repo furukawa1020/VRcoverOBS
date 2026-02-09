@@ -515,20 +515,44 @@ export class AvatarSystem {
             // MP(x, y, z) -> VRM(x, -y, -z) mapping
             const vUpperVRM = new THREE.Vector3(vUpperMP.x, -vUpperMP.y, -vUpperMP.z);
 
-            // Left Arm T-Pose Direction is +X
-            const tPoseLeft = new THREE.Vector3(1, 0, 0);
+            // Simple Rotation Logic (Reverting complex vector math)
+            // T-Pose: Arm is +X.
+            // Goal: Map MP(x,y,z) to Arm Rotation.
 
-            // Calculate shortest rotation from T-Pose to Target
-            let q = new THREE.Quaternion().setFromUnitVectors(tPoseLeft, vUpperVRM);
+            // 1. Roll (Z-axis rotation): Raise/Lower arm.
+            // s.y vs e.y.
+            // If e.y > s.y (Basic MP), arm is down.
+            // atan2(dy, dx) might work better.
 
-            // Z-axis (Depth) Compensation
-            const depthDelta = eSmooth.z - sSmooth.z;
-            if (depthDelta < -0.1) {
-              // Elbow is forward -> Add forward pitch (rotate around local Y-axis)
-              // depthDelta is negative. We want POSITIVE rotation to move arm forward.
-              const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -depthDelta * 1.5);
-              q.multiply(pitchAdjust);
-            }
+            const dx = eSmooth.x - sSmooth.x;
+            const dy = eSmooth.y - sSmooth.y;
+            const dz = eSmooth.z - sSmooth.z;
+
+            // Standard T-Pose: Arm is Horizontal (+X).
+            // MP: +Y is Down.
+
+            // Calculate angle in XY plane (Roll/Adduction)
+            // 0 rad = Arm Right (+X). PI/2 = Arm Down (+Y).
+            let angleXY = Math.atan2(dy, dx);
+
+            // VRM T-Pose (Left Arm): +X axis.
+            // Z-rotation: + is raising? No, +Z rotates X -> Y (Down).
+            // So we can apply angleXY directly-ish.
+
+            // Compensation for T-Pose offset (0 rotation = Horizontal)
+            // We want (0,0,-1) [Down] to be z-rot = -PI/2? No.
+            // Let's stick to Unit Vectors but simplified.
+
+            const vDir = new THREE.Vector3(dx, -dy, -dz).normalize(); // Adjust coord system
+            const tPose = new THREE.Vector3(1, 0, 0);
+            let q = new THREE.Quaternion().setFromUnitVectors(tPose, vDir);
+
+            // Depth Compensation (Pitch) - Fix "Sticking Out"
+            // If dz is negative (close), arm should go Forward.
+            // Current vDir handles it somewhat, but let's boost it if needed.
+            // The user said "Sticking out" (Tsukidashiteru) -> Maybe twisting weirdly?
+            // Let's remove the extra pitch boost for now and trust the vDir if coordinates are correct.
+            // Actually, if the user says "Sticking out" maybe they mean the ELBOW keypoint is wrong.
 
             this.setTargetRotation('leftUpperArm', q);
           }
@@ -622,6 +646,21 @@ export class AvatarSystem {
             const vUpper = new THREE.Vector3(vUpperMP.x, -vUpperMP.y, -vUpperMP.z).normalize();
             const vLower = new THREE.Vector3(vLowerMP.x, -vLowerMP.y, -vLowerMP.z).normalize();
 
+            // Simple Rotation Logic (Right Arm)
+            // T-Pose: Arm is -X.
+
+            const dx = eSmooth.x - sSmooth.x;
+            const dy = eSmooth.y - sSmooth.y;
+            const dz = eSmooth.z - sSmooth.z;
+
+            const vDir = new THREE.Vector3(dx, -dy, -dz).normalize();
+            const tPose = new THREE.Vector3(-1, 0, 0); // Right Arm is -X
+
+            let q = new THREE.Quaternion().setFromUnitVectors(tPose, vDir);
+
+            this.setTargetRotation('rightUpperArm', q);
+
+            /* Previous Logic Removed for Clarity
             // Right Arm Alignment (Basis)
             let vPlaneNormal = new THREE.Vector3().crossVectors(vUpper, vLower).normalize();
             if (vPlaneNormal.lengthSq() < 0.01) {
@@ -641,12 +680,12 @@ export class AvatarSystem {
             // Z-axis (Depth) Compensation
             const depthDelta = eSmooth.z - sSmooth.z;
             if (depthDelta < -0.1) {
-              // depthDelta is negative. Positive rotation moves Right Arm Forward (from -X axis).
+               // depthDelta is negative. Positive rotation moves Right Arm Forward (from -X axis).
               const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -depthDelta * 1.5);
               q.multiply(pitchAdjust);
             }
-
-            this.setTargetRotation('rightUpperArm', q);
+            */
+            // End Previous Logic
           }
 
           // 前腕 (RightLowerArm)
