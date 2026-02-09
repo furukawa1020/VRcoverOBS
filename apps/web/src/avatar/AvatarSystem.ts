@@ -624,7 +624,7 @@ export class AvatarSystem {
 
             // Right Arm Alignment (Basis)
             let vPlaneNormal = new THREE.Vector3().crossVectors(vUpper, vLower).normalize();
-            if (vPlane Normal.lengthSq() < 0.01) {
+            if (vPlaneNormal.lengthSq() < 0.01) {
               vPlaneNormal.set(0, 1, 0);
             }
 
