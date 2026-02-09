@@ -60,8 +60,8 @@ class BodyTracker:
             print("[WARN] Already running")
             return True
         
-        # Try camera IDs 0, 1, 2
-        for cam_id in [0, 1, 2]:
+        # Try camera IDs 1, 0, 2 (Prefer 1 as 0 is often a Virtual Camera)
+        for cam_id in [1, 0, 2]:
             print(f"SEARCH Checking camera ID {cam_id}...")
             self.cap = cv2.VideoCapture(cam_id)
             if self.cap.isOpened():
