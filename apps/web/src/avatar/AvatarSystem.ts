@@ -571,11 +571,11 @@ export class AvatarSystem {
               this.setTargetRotation('leftLowerArm', q);
 
               // --- ピースサイン判定 (Z軸) ---
-              // 手首がカメラに近い (Z < -0.15 くらい？) 場合にピース
+              // 手首がカメラに近い (Z < -0.1 くらい？) 場合にピース
               // 基準: 肩のZ位置からどれくらい前か
               const distZ = w.z - s.z;
 
-              if (distZ < -0.15) { // 閾値を緩和 (-0.2 -> -0.15)
+              if (distZ < -0.1) { // 閾値を緩和 (-0.15 -> -0.1)
                 this.setFingerPose('left', 'peace');
               } else {
                 this.setFingerPose('left', 'neutral');
@@ -669,7 +669,7 @@ export class AvatarSystem {
 
               // --- ピースサイン判定 (Z軸) ---
               const distZ = w.z - s.z;
-              if (distZ < -0.15) {
+              if (distZ < -0.1) {
                 this.setFingerPose('right', 'peace');
               } else {
                 this.setFingerPose('right', 'neutral');
