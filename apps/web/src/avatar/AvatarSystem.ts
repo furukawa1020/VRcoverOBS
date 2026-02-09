@@ -521,12 +521,12 @@ export class AvatarSystem {
             // Calculate shortest rotation from T-Pose to Target
             let q = new THREE.Quaternion().setFromUnitVectors(tPoseLeft, vUpperVRM);
 
-            // Z-axis (Depth) Compensation: If elbow is forward (z < shoulder.z in MP), tilt arm forward
-            // MediaPipe: z=0 is far, negative z is close. So if e.z < s.z, elbow is closer.
+            // Z-axis (Depth) Compensation
             const depthDelta = eSmooth.z - sSmooth.z;
             if (depthDelta < -0.1) {
               // Elbow is forward -> Add forward pitch (rotate around local Y-axis)
-              const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), depthDelta * 1.5);
+              // depthDelta is negative. We want POSITIVE rotation to move arm forward.
+              const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -depthDelta * 1.5);
               q.multiply(pitchAdjust);
             }
 
@@ -641,7 +641,8 @@ export class AvatarSystem {
             // Z-axis (Depth) Compensation
             const depthDelta = eSmooth.z - sSmooth.z;
             if (depthDelta < -0.1) {
-              const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), depthDelta * 1.5);
+              // depthDelta is negative. Positive rotation moves Right Arm Forward (from -X axis).
+              const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -depthDelta * 1.5);
               q.multiply(pitchAdjust);
             }
 
