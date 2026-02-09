@@ -822,9 +822,9 @@ export class AvatarSystem {
       // Neutral: 自然な「五本指」 (Natural Open Hand)
       // 完全に平らではなく、わずかに曲げ、わずかに開く
 
-      // 親指 (Thumb): 少し内側に入れる
-      setRot(`${prefix}ThumbProximal`, 0, curlDir * 0.2, 0);
-      setRot(`${prefix}ThumbIntermediate`, 0, curlDir * 0.1, 0);
+      // 親指 (Thumb): 完全に開く（パー）
+      setRot(`${prefix}ThumbProximal`, 0, 0, 0);
+      setRot(`${prefix}ThumbIntermediate`, 0, 0, 0);
 
       // 人差し指 (Index): ほぼ真っ直ぐだが、わずかに曲げる
       setRot(`${prefix}IndexProximal`, 0, spreadDir * -0.05, curlDir * 0.1);
