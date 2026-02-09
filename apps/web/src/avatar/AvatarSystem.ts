@@ -576,25 +576,32 @@ export class AvatarSystem {
             const vUpper = new THREE.Vector3(vUpperMP.x, -vUpperMP.y, -vUpperMP.z).normalize();
             const vLower = new THREE.Vector3(vLowerMP.x, -vLowerMP.y, -vLowerMP.z).normalize();
 
-            // 1. Dir Alignment (Right Arm T-Pose: -X)
-            const tPoseDir = new THREE.Vector3(-1, 0, 0);
-            const qDir = new THREE.Quaternion().setFromUnitVectors(tPoseDir, vUpper);
+            // Right Arm Alignment (Basis)
+            // Left: Upper(Out) x Lower(Down) -> Forward(+Z)
+            // Right: Upper(Out, -X) x Lower(Down, -Y) -> Cross(-X, -Y) = +Z (Forward)
 
-            // 2. Plane Twist Alignment
             let vPlaneNormal = new THREE.Vector3().crossVectors(vUpper, vLower).normalize();
             if (vPlaneNormal.lengthSq() < 0.01) {
-              vPlaneNormal.crossVectors(vUpper, new THREE.Vector3(0, 1, 0)).normalize();
+              vPlaneNormal.set(0, 1, 0);
             }
 
-            // For Right Arm, if Up is +Y, let's try aligning -Y to Normal or something?
-            // Actually, symmetry suggests similar logic.
-            const currentY = new THREE.Vector3(0, 1, 0).applyQuaternion(qDir);
+            // Target Basis:
+            // X_target = -vUpper (Since real bone is -X axis)
+            // Y_target = vPlaneNormal
+            // Z_target = X_target cross Y_target
 
-            // Fix twist
-            const qTwist = new THREE.Quaternion().setFromUnitVectors(currentY, vPlaneNormal);
-            const qFinal = qTwist.multiply(qDir);
+            const targetXAxis = vUpper.clone().negate(); // Align -X to vUpper. So +X is -vUpper.
+            const targetYAxis = vPlaneNormal.clone();    // Align +Y to Normal
+            const targetZAxis = new THREE.Vector3().crossVectors(targetXAxis, targetYAxis).normalize();
 
-            this.setTargetRotation('rightUpperArm', qFinal);
+            // Orthogonalize Y
+            targetYAxis.crossVectors(targetZAxis, targetXAxis).normalize();
+
+            const m = new THREE.Matrix4();
+            m.makeBasis(targetXAxis, targetYAxis, targetZAxis);
+            const q = new THREE.Quaternion().setFromRotationMatrix(m);
+
+            this.setTargetRotation('rightUpperArm', q);
           }
 
           // 前腕 (RightLowerArm)
