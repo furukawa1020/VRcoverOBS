@@ -543,16 +543,30 @@ export class AvatarSystem {
             // We want (0,0,-1) [Down] to be z-rot = -PI/2? No.
             // Let's stick to Unit Vectors but simplified.
 
-            const vDir = new THREE.Vector3(dx, -dy, -dz).normalize(); // Adjust coord system
-            const tPose = new THREE.Vector3(1, 0, 0);
-            let q = new THREE.Quaternion().setFromUnitVectors(tPose, vDir);
+            // Stable Rotation with Up-Vector Constraint
+            // Problem: setFromUnitVectors allows free roll, causing elbow to point in random directions.
+            // Solution: Construct basis with World Up (0,1,0) constraint to stabilize the elbow.
 
-            // Depth Compensation (Pitch) - Fix "Sticking Out"
-            // If dz is negative (close), arm should go Forward.
-            // Current vDir handles it somewhat, but let's boost it if needed.
-            // The user said "Sticking out" (Tsukidashiteru) -> Maybe twisting weirdly?
-            // Let's remove the extra pitch boost for now and trust the vDir if coordinates are correct.
-            // Actually, if the user says "Sticking out" maybe they mean the ELBOW keypoint is wrong.
+            const vDir = new THREE.Vector3(dx, -dy, -dz).normalize();
+            const upConstraint = new THREE.Vector3(0, 1, 0);
+
+            // Build Rotation Matrix:
+            // X-axis (Bone Forward) = vDir
+            // Z-axis = X cross Up (ensures consistent rotation plane)
+            // Y-axis = Z cross X (orthogonalized Up)
+
+            const xAxis = vDir.clone();
+            let zAxis = new THREE.Vector3().crossVectors(xAxis, upConstraint).normalize();
+
+            // Handle edge case: arm pointing straight up/down
+            if (zAxis.lengthSq() < 0.001) {
+              zAxis.set(0, 0, 1); // Fallback to forward
+            }
+
+            const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+
+            const m = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+            const q = new THREE.Quaternion().setFromRotationMatrix(m);
 
             this.setTargetRotation('leftUpperArm', q);
           }
@@ -653,10 +667,24 @@ export class AvatarSystem {
             const dy = eSmooth.y - sSmooth.y;
             const dz = eSmooth.z - sSmooth.z;
 
-            const vDir = new THREE.Vector3(dx, -dy, -dz).normalize();
-            const tPose = new THREE.Vector3(-1, 0, 0); // Right Arm is -X
+            // Stable Rotation with Up-Vector Constraint (Right Arm)
+            // Right Arm bone points -X, so we negate vDir.
 
-            let q = new THREE.Quaternion().setFromUnitVectors(tPose, vDir);
+            const vDir = new THREE.Vector3(dx, -dy, -dz).normalize();
+            const upConstraint = new THREE.Vector3(0, 1, 0);
+
+            // Build Rotation Matrix for Right Arm (bone is -X axis)
+            const xAxis = vDir.clone().negate(); // Bone points -X, so -vDir
+            let zAxis = new THREE.Vector3().crossVectors(xAxis, upConstraint).normalize();
+
+            if (zAxis.lengthSq() < 0.001) {
+              zAxis.set(0, 0, 1);
+            }
+
+            const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+
+            const m = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+            const q = new THREE.Quaternion().setFromRotationMatrix(m);
 
             this.setTargetRotation('rightUpperArm', q);
 
