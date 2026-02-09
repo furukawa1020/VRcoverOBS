@@ -28,7 +28,7 @@ Start-Sleep -Seconds 2
 # 3. AI Service
 Write-Host "3. Starting AI Service..." -ForegroundColor Yellow
 $AIDir = Join-Path $ProjectRoot "apps\ai"
-Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'Face & Hand Tracker'; cd '$AIDir'; .\venv\Scripts\python.exe body_tracker.py"
+Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass", "-NoExit", "-Command", "Write-Host 'AI Service (Tracker + API)'; cd '$AIDir'; .\venv\Scripts\python.exe main.py"
 
 # 4. OpenSeeFace (Face Tracking) - Disabled (Using MediaPipe Holistic)
 # Write-Host "4. Starting OpenSeeFace..." -ForegroundColor Yellow
