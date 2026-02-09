@@ -60,8 +60,8 @@ class BodyTracker:
             print("[WARN] Already running")
             return True
         
-        # Try camera IDs 1, 0, 2 (Prefer 1 as 0 is often a Virtual Camera)
-        for cam_id in [1, 0, 2]:
+        # Try camera IDs 0, 1, 2
+        for cam_id in [0, 1, 2]:
             print(f"SEARCH Checking camera ID {cam_id}...")
             self.cap = cv2.VideoCapture(cam_id)
             if self.cap.isOpened():
@@ -136,8 +136,12 @@ class BodyTracker:
                         print(f"[STATUS] FPS: {fps:.1f} | Tracking Active")
                         frame_count = 0
                         start_time = time.time()
+                    
+                    # Reset search counter
+                    self.search_counter = 0
+
                 else:
-                    # If no pose is detected, still update FPS and indicate searching
+                    # If no pose is detected
                     frame_count += 1
                     if frame_count % 30 == 0:
                         elapsed = time.time() - start_time
@@ -145,6 +149,22 @@ class BodyTracker:
                         print(f"[STATUS] FPS: {fps:.1f} | Searching for body...")
                         frame_count = 0
                         start_time = time.time()
+                    
+                    # Auto-switch camera if stuck searching
+                    if not hasattr(self, 'search_counter'):
+                        self.search_counter = 0
+                    
+                    self.search_counter += 1
+                    # ~150 frames is approx 5-6 seconds at 25-30fps
+                    if self.search_counter > 150:
+                        print(f"[WARN] No body found for 5+ seconds. Switching camera from ID {self.camera_id}...")
+                        self.cap.release()
+                        self.camera_id = (self.camera_id + 1) % 4 # Cycle 0-3
+                        print(f"[INFO] Trying Camera ID {self.camera_id}...")
+                        self.cap = cv2.VideoCapture(self.camera_id)
+                        self.search_counter = 0
+                        if not self.cap.isOpened():
+                            print(f"[WARN] Camera {self.camera_id} failed to open. Next...")
 
             except Exception as e:
                 print(f"[ERROR] Tracking loop error: {e}")
