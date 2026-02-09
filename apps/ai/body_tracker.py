@@ -137,9 +137,6 @@ class BodyTracker:
                         frame_count = 0
                         start_time = time.time()
                     
-                    # Reset search counter
-                    self.search_counter = 0
-
                 else:
                     # If no pose is detected
                     frame_count += 1
