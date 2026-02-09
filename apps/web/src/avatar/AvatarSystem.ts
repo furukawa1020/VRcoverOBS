@@ -46,6 +46,10 @@ export class AvatarSystem {
   // 全身の骨の目標回転を保持するマップ (BoneName -> Quaternion)
   private targetBoneRotations = new Map<string, THREE.Quaternion>();
 
+  // Position smoothing for arms (EMA)
+  private smoothedLeft?: { s: { x: number, y: number, z: number }, e: { x: number, y: number, z: number } };
+  private smoothedRight?: { s: { x: number, y: number, z: number }, e: { x: number, y: number, z: number } };
+
   async init() {
     // シーンの初期化
     this.scene = new THREE.Scene();
@@ -490,16 +494,42 @@ export class AvatarSystem {
         } else {
           const bone = humanoid.getNormalizedBoneNode('leftUpperArm' as any);
           if (bone) {
+            // Smoothing: Apply EMA to shoulder/elbow positions (alpha=0.3 for responsiveness)
+            const alpha = 0.3;
+            if (!this.smoothedLeft) {
+              this.smoothedLeft = { s: { ...s }, e: { ...e } };
+            } else {
+              this.smoothedLeft.s.x = alpha * s.x + (1 - alpha) * this.smoothedLeft.s.x;
+              this.smoothedLeft.s.y = alpha * s.y + (1 - alpha) * this.smoothedLeft.s.y;
+              this.smoothedLeft.s.z = alpha * s.z + (1 - alpha) * this.smoothedLeft.s.z;
+              this.smoothedLeft.e.x = alpha * e.x + (1 - alpha) * this.smoothedLeft.e.x;
+              this.smoothedLeft.e.y = alpha * e.y + (1 - alpha) * this.smoothedLeft.e.y;
+              this.smoothedLeft.e.z = alpha * e.z + (1 - alpha) * this.smoothedLeft.e.z;
+            }
+
+            const sSmooth = this.smoothedLeft.s;
+            const eSmooth = this.smoothedLeft.e;
+
             // Vector-based alignment (Fixes 'Arm Behind' & 'Twist')
-            const vUpperMP = new THREE.Vector3(e.x - s.x, e.y - s.y, e.z - s.z).normalize();
-            // MP(x, y, z) -> VRM(x, -y, -z) mapping confirmed for consistency
+            const vUpperMP = new THREE.Vector3(eSmooth.x - sSmooth.x, eSmooth.y - sSmooth.y, eSmooth.z - sSmooth.z).normalize();
+            // MP(x, y, z) -> VRM(x, -y, -z) mapping
             const vUpperVRM = new THREE.Vector3(vUpperMP.x, -vUpperMP.y, -vUpperMP.z);
 
             // Left Arm T-Pose Direction is +X
             const tPoseLeft = new THREE.Vector3(1, 0, 0);
 
             // Calculate shortest rotation from T-Pose to Target
-            const q = new THREE.Quaternion().setFromUnitVectors(tPoseLeft, vUpperVRM);
+            let q = new THREE.Quaternion().setFromUnitVectors(tPoseLeft, vUpperVRM);
+
+            // Z-axis (Depth) Compensation: If elbow is forward (z < shoulder.z in MP), tilt arm forward
+            // MediaPipe: z=0 is far, negative z is close. So if e.z < s.z, elbow is closer.
+            const depthDelta = eSmooth.z - sSmooth.z;
+            if (depthDelta < -0.1) {
+              // Elbow is forward -> Add forward pitch (rotate around local Y-axis)
+              const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), depthDelta * 1.5);
+              q.multiply(pitchAdjust);
+            }
+
             this.setTargetRotation('leftUpperArm', q);
           }
 
@@ -565,41 +595,55 @@ export class AvatarSystem {
         } else {
           const bone = humanoid.getNormalizedBoneNode('rightUpperArm' as any);
           if (bone) {
+            // Smoothing: Apply EMA (alpha=0.3)
+            const alpha = 0.3;
+            if (!this.smoothedRight) {
+              this.smoothedRight = { s: { ...s }, e: { ...e } };
+            } else {
+              this.smoothedRight.s.x = alpha * s.x + (1 - alpha) * this.smoothedRight.s.x;
+              this.smoothedRight.s.y = alpha * s.y + (1 - alpha) * this.smoothedRight.s.y;
+              this.smoothedRight.s.z = alpha * s.z + (1 - alpha) * this.smoothedRight.s.z;
+              this.smoothedRight.e.x = alpha * e.x + (1 - alpha) * this.smoothedRight.e.x;
+              this.smoothedRight.e.y = alpha * e.y + (1 - alpha) * this.smoothedRight.e.y;
+              this.smoothedRight.e.z = alpha * e.z + (1 - alpha) * this.smoothedRight.e.z;
+            }
+
+            const sSmooth = this.smoothedRight.s;
+            const eSmooth = this.smoothedRight.e;
+
             // VRM Space Conversion
-            const vUpperMP = new THREE.Vector3(e.x - s.x, e.y - s.y, e.z - s.z);
+            const vUpperMP = new THREE.Vector3(eSmooth.x - sSmooth.x, eSmooth.y - sSmooth.y, eSmooth.z - sSmooth.z);
             const vLowerMP = new THREE.Vector3(
-              (getVal(body.wrist?.right?.x) || e.x) - e.x,
-              (getVal(body.wrist?.right?.y) || e.y) - e.y,
-              (getVal(body.wrist?.right?.z) || e.z) - e.z
+              (getVal(body.wrist?.right?.x) || eSmooth.x) - eSmooth.x,
+              (getVal(body.wrist?.right?.y) || eSmooth.y) - eSmooth.y,
+              (getVal(body.wrist?.right?.z) || eSmooth.z) - eSmooth.z
             );
 
             const vUpper = new THREE.Vector3(vUpperMP.x, -vUpperMP.y, -vUpperMP.z).normalize();
             const vLower = new THREE.Vector3(vLowerMP.x, -vLowerMP.y, -vLowerMP.z).normalize();
 
             // Right Arm Alignment (Basis)
-            // Left: Upper(Out) x Lower(Down) -> Forward(+Z)
-            // Right: Upper(Out, -X) x Lower(Down, -Y) -> Cross(-X, -Y) = +Z (Forward)
-
             let vPlaneNormal = new THREE.Vector3().crossVectors(vUpper, vLower).normalize();
-            if (vPlaneNormal.lengthSq() < 0.01) {
+            if (vPlane Normal.lengthSq() < 0.01) {
               vPlaneNormal.set(0, 1, 0);
             }
 
-            // Target Basis:
-            // X_target = -vUpper (Since real bone is -X axis)
-            // Y_target = vPlaneNormal
-            // Z_target = X_target cross Y_target
-
-            const targetXAxis = vUpper.clone().negate(); // Align -X to vUpper. So +X is -vUpper.
-            const targetYAxis = vPlaneNormal.clone();    // Align +Y to Normal
+            // Target Basis for Right (bone points -X)
+            const targetXAxis = vUpper.clone().negate();
+            const targetYAxis = vPlaneNormal.clone();
             const targetZAxis = new THREE.Vector3().crossVectors(targetXAxis, targetYAxis).normalize();
-
-            // Orthogonalize Y
             targetYAxis.crossVectors(targetZAxis, targetXAxis).normalize();
 
             const m = new THREE.Matrix4();
             m.makeBasis(targetXAxis, targetYAxis, targetZAxis);
-            const q = new THREE.Quaternion().setFromRotationMatrix(m);
+            let q = new THREE.Quaternion().setFromRotationMatrix(m);
+
+            // Z-axis (Depth) Compensation
+            const depthDelta = eSmooth.z - sSmooth.z;
+            if (depthDelta < -0.1) {
+              const pitchAdjust = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), depthDelta * 1.5);
+              q.multiply(pitchAdjust);
+            }
 
             this.setTargetRotation('rightUpperArm', q);
           }
