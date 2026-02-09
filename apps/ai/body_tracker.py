@@ -149,25 +149,11 @@ class BodyTracker:
                         print(f"[STATUS] FPS: {fps:.1f} | Searching for body...")
                         frame_count = 0
                         start_time = time.time()
-                    
-                    # Auto-switch camera if stuck searching
-                    if not hasattr(self, 'search_counter'):
-                        self.search_counter = 0
-                    
-                    self.search_counter += 1
-                    # ~60 frames is approx 2-3 seconds at 30fps (or 6s at 10fps)
-                    if self.search_counter > 60:
-                        print(f"[WARN] No body found for a while. Switching camera from ID {self.camera_id}...")
-                        self.cap.release()
-                        self.camera_id = (self.camera_id + 1) % 4 # Cycle 0-3
-                        print(f"[INFO] Trying Camera ID {self.camera_id}...")
-                        self.cap = cv2.VideoCapture(self.camera_id)
-                        self.search_counter = 0
-                        if not self.cap.isOpened():
-                            print(f"[WARN] Camera {self.camera_id} failed to open. Next...")
 
             except Exception as e:
                 print(f"[ERROR] Tracking loop error: {e}")
+                # Simple retry logic (optional, but keep it minimal)
+                time.sleep(1.0)
                 import traceback
                 traceback.print_exc()
             else:
