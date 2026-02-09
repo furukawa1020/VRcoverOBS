@@ -250,39 +250,53 @@ oscServerBody.on('message', (oscMsg) => {
         // /face/rotation x y z
         trackingData.headRotation = { x: args[0], y: args[1], z: args[2] };
       }
-      else if (type === 'pos') {
-        // /face/pos x y z
-        trackingData.facePosition = { x: args[0], y: args[1], z: args[2] };
-      }
-      else if (type === 'blink') {
-        trackingData.blink = args[0];
-      }
-      else if (type === 'mouth') {
-        // /face/mouth open smile
-        if (args.length >= 2) {
-          trackingData.mouthOpen = args[0];
-          trackingData.mouthSmile = args[1];
-        } else {
-          trackingData.mouthOpen = args[0];
-        }
-      }
-      else if (type === 'eye') {
-        // /face/eye x y
-        trackingData.eyeX = args[0];
-        trackingData.eyeY = args[1];
-      }
-
-      trackingData.timestamp = Date.now();
-      trackingData.confidence = 0.9;
+      // Add other face parts...
     }
 
-    // OSCデータ受信時は即時ブロードキャストするか、一定間隔にするか
-    // ここでは顔データと一緒に送るため、更新のみ行う
+    // Broadcast immediately on OSC update (or throttle if too fast)
+    // Since OSC comes per-joint, maybe we should throttle/debounce?
+    // But trackingData handles cumulative updates. Let's just broadcast for simplicity now.
     broadcastToClients(trackingData);
 
-  } catch (e) {
-    console.error('OSCパースエラー:', e);
+  } catch (err) {
+    console.error('OSC Parse Error:', err);
   }
+});
+trackingData.headRotation = { x: args[0], y: args[1], z: args[2] };
+      }
+      else if (type === 'pos') {
+  // /face/pos x y z
+  trackingData.facePosition = { x: args[0], y: args[1], z: args[2] };
+}
+else if (type === 'blink') {
+  trackingData.blink = args[0];
+}
+else if (type === 'mouth') {
+  // /face/mouth open smile
+  if (args.length >= 2) {
+    trackingData.mouthOpen = args[0];
+    trackingData.mouthSmile = args[1];
+  } else {
+    trackingData.mouthOpen = args[0];
+  }
+}
+else if (type === 'eye') {
+  // /face/eye x y
+  trackingData.eyeX = args[0];
+  trackingData.eyeY = args[1];
+}
+
+trackingData.timestamp = Date.now();
+trackingData.confidence = 0.9;
+    }
+
+// OSCデータ受信時は即時ブロードキャストするか、一定間隔にするか
+// ここでは顔データと一緒に送るため、更新のみ行う
+broadcastToClients(trackingData);
+
+  } catch (e) {
+  console.error('OSCパースエラー:', e);
+}
 });
 
 oscServerBody.on('error', (error) => {

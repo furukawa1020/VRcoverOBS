@@ -60,8 +60,8 @@ class BodyTracker:
             print("[WARN] Already running")
             return True
         
-        # Try camera IDs 0, 1, 2
-        for cam_id in [0, 1, 2]:
+        # Try camera IDs 1, 0, 2 (Prefer 1: Physical, 0: Often Virtual/OBS)
+        for cam_id in [1, 0, 2]:
             print(f"SEARCH Checking camera ID {cam_id}...")
             self.cap = cv2.VideoCapture(cam_id)
             if self.cap.isOpened():
@@ -181,6 +181,10 @@ class BodyTracker:
             lm = landmarks[idx]
             # Send /body/{part}/{side} x y z
             self.osc_client.send_message(f"/body/{part}/{side}", [float(lm.x), float(lm.y), float(lm.z)])
+
+        # Log coordinates occasionally for debugging
+        left_wrist = landmarks[15]
+        print(f"[COORD] L-Wrist: ({left_wrist.x:.2f}, {left_wrist.y:.2f}, {left_wrist.z:.2f})")
 
     def _process_face_from_pose(self, landmarks, img_w, img_h):
         """Estimate head rotation using Pose Landmarks (0-10)"""
