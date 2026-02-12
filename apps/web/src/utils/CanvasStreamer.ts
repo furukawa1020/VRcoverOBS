@@ -71,15 +71,25 @@ export class CanvasStreamer {
     }
 
     private startCapture() {
+        // オフスクリーンCanvasを作成 (リサイズ用: 1280x720)
+        const offScreen = document.createElement('canvas');
+        offScreen.width = 1280;
+        offScreen.height = 720;
+        const ctx = offScreen.getContext('2d', { alpha: false }); // Alpha不要で高速化
+
         // 指定したFPSで画像を送信
         this.intervalId = window.setInterval(() => {
             if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+            if (!ctx) return;
 
-            this.canvas.toBlob((blob) => {
+            // メインCanvasをオフスクリーンに描画（リサイズ）
+            ctx.drawImage(this.canvas, 0, 0, offScreen.width, offScreen.height);
+
+            offScreen.toBlob((blob) => {
                 if (blob && this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(blob);
                 }
-            }, 'image/jpeg', 0.8); // JPEG品質0.8
+            }, 'image/jpeg', 0.6); // JPEG品質0.6 (軽量化)
         }, 1000 / this.fps);
     }
 

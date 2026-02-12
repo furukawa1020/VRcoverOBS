@@ -6,7 +6,7 @@ import threading
 import time
 
 class VirtualCamera:
-    def __init__(self, width=1280, height=720, fps=30):
+    def __init__(self, width=1280, height=720, fps=24):
         self.width = width
         self.height = height
         self.fps = fps

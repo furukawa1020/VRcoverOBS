@@ -41,7 +41,7 @@ export class UI {
 
   private initCanvasStreamer() {
     const canvas = this.options.avatarSystem.getDomElement();
-    this.canvasStreamer = new CanvasStreamer(canvas, CONFIG.ai.streamUrl, 30);
+    this.canvasStreamer = new CanvasStreamer(canvas, CONFIG.ai.streamUrl, 20); // FPSを下げて負荷軽減 (30 -> 20)
   }
 
 
