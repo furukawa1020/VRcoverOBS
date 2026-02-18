@@ -71,26 +71,28 @@ export class CanvasStreamer {
     }
 
     private startCapture() {
-        // オフスクリーンCanvasを作成 (リサイズ用: 1280x720)
+        // オフスクリーンCanvasを作成 (大幅リサイズ: 640x360)
+        // メインスレッドでのtoBlobが重いため、解像度を下げて負荷を減らす
         const offScreen = document.createElement('canvas');
-        offScreen.width = 1280;
-        offScreen.height = 720;
-        const ctx = offScreen.getContext('2d', { alpha: false }); // Alpha不要で高速化
+        offScreen.width = 640;
+        offScreen.height = 360;
+        const ctx = offScreen.getContext('2d', { alpha: false, desynchronized: true });
 
         // 指定したFPSで画像を送信
         this.intervalId = window.setInterval(() => {
             if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
             if (!ctx) return;
 
-            // メインCanvasをオフスクリーンに描画（リサイズ）
+            // メインCanvasをオフスクリーンに描画
             ctx.drawImage(this.canvas, 0, 0, offScreen.width, offScreen.height);
 
+            // 品質を落として高速化 (0.5)
             offScreen.toBlob((blob) => {
                 if (blob && this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(blob);
                 }
-            }, 'image/jpeg', 0.6); // JPEG品質0.6 (軽量化)
-        }, 1000 / this.fps);
+            }, 'image/jpeg', 0.5);
+        }, 1000 / 15); // 15 FPSに制限
     }
 
     public get isActive(): boolean {
