@@ -8,6 +8,7 @@ import type { AvatarSystem } from '../avatar/AvatarSystem';
 import type { AudioProcessor } from '../audio/AudioProcessor';
 import type { TrackingClient } from '../tracking/TrackingClient';
 import { CanvasStreamer } from '../utils/CanvasStreamer';
+import { MarkdownLoader } from '../utils/MarkdownLoader';
 
 
 interface UIOptions {
@@ -25,6 +26,8 @@ export class UI {
 
   private isVoiceChangerEnabled = false;
   private canvasStreamer: CanvasStreamer | null = null;
+  private markdownLoader: MarkdownLoader = new MarkdownLoader();
+  private docsModal: HTMLElement | null = null;
 
 
   constructor(options: UIOptions) {
@@ -141,6 +144,10 @@ export class UI {
       </div>
 
       <div class="ui-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(247,247,247,0.2); text-align: center;">
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 10px;">
+          <button id="docs-obs-btn" class="ui-button" style="font-size: 12px; padding: 6px 10px;">📖 OBSガイド</button>
+          <button id="docs-vroid-btn" class="ui-button" style="font-size: 12px; padding: 6px 10px;">🎀 VRoidガイド</button>
+        </div>
         <p style="font-size: 10px; opacity: 0.6; margin: 0;">
           💙 白山の自然をモチーフに
         </p>
@@ -362,6 +369,110 @@ export class UI {
         const expression = (e.target as HTMLElement).getAttribute('data-expression');
         this.applyExpression(expression!);
       });
+    });
+
+    // ドキュメントボタン（READMEとは別のMDファイル表示）
+    document.getElementById('docs-obs-btn')?.addEventListener('click', () => {
+      this.openDocsModal('/docs/OBS_SETUP_GUIDE.md', '📖 OBS Studio セットアップガイド');
+    });
+    document.getElementById('docs-vroid-btn')?.addEventListener('click', () => {
+      this.openDocsModal('/VROID_GUIDE.md', '🎀 VRoidモデルの使い方ガイド');
+    });
+  }
+
+  /**
+   * READMEとは別のMDファイルをモーダルで表示する
+   * @param mdPath - Markdownファイルのパス
+   * @param title - モーダルのタイトル
+   */
+  private openDocsModal(mdPath: string, title: string) {
+    // 既存モーダルを削除
+    this.docsModal?.remove();
+
+    this.docsModal = document.createElement('div');
+    this.docsModal.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    const panel = document.createElement('div');
+    panel.style.cssText = `
+      background: #2E2B2B;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 700px;
+      width: 90vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      color: #F7F7F7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    `;
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;';
+
+    const titleEl = document.createElement('h2');
+    titleEl.style.cssText = 'margin: 0; font-size: 16px; font-weight: 500;';
+    titleEl.textContent = title;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'docs-modal-close';
+    closeBtn.style.cssText = `
+      background: none; border: none; color: #F7F7F7;
+      font-size: 20px; cursor: pointer; padding: 4px 8px;
+      border-radius: 6px; line-height: 1;
+    `;
+    closeBtn.textContent = '✕';
+
+    header.appendChild(titleEl);
+    header.appendChild(closeBtn);
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      overflow-y: auto;
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.7;
+      padding-right: 8px;
+    `;
+    content.innerHTML = '<p style="opacity:0.6;">読み込み中...</p>';
+
+    panel.appendChild(header);
+    panel.appendChild(content);
+    this.docsModal.appendChild(panel);
+    document.body.appendChild(this.docsModal);
+
+    // 閉じるボタン
+    closeBtn.addEventListener('click', () => {
+      this.docsModal?.remove();
+      this.docsModal = null;
+    });
+    // 背景クリックで閉じる
+    this.docsModal.addEventListener('click', (e) => {
+      if (e.target === this.docsModal) {
+        this.docsModal?.remove();
+        this.docsModal = null;
+      }
+    });
+
+    // Markdownを読み込んで表示
+    this.markdownLoader.display(mdPath, content).catch((err) => {
+      const errP = document.createElement('p');
+      errP.style.color = '#ff6b6b';
+      errP.textContent = 'ドキュメントの読み込みに失敗しました。';
+      const errDetail = document.createElement('span');
+      errDetail.textContent = err instanceof Error ? err.message : String(err);
+      errP.appendChild(document.createElement('br'));
+      errP.appendChild(errDetail);
+      content.innerHTML = '';
+      content.appendChild(errP);
     });
   }
 
